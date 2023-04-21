@@ -9,6 +9,7 @@ import { BillingModule } from './billing/billing.module';
 import { AppointmentModule } from './appointment/appointment.module';
 import { PackageModule } from './package/package.module';
 import { BookingModule } from './booking/booking.module';
+import { CategoryModule } from './category/category.module';
 
 
 @Module({
@@ -22,7 +23,8 @@ import { BookingModule } from './booking/booking.module';
         BillingModule,
         AppointmentModule,
         PackageModule,
-        BookingModule
+        BookingModule,
+        CategoryModule
     ],
 })
 export class ModulesModule { }

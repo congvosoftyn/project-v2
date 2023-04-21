@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ProductEntity } from 'src/entities/Product.entity';
-import { ProductCategoryEntity } from 'src/entities/Category.entity';
+import { CategoryEntity } from 'src/entities/Category.entity';
 import { StaffEntity } from 'src/entities/Staff.entity';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { PaginationDto } from 'src/shared/dto/pagination.dto';
@@ -8,7 +8,7 @@ import { PaginationDto } from 'src/shared/dto/pagination.dto';
 @Injectable()
 export class ServiceService {
     getCategories(storeId: number) {
-        return ProductCategoryEntity.createQueryBuilder('cat')
+        return CategoryEntity.createQueryBuilder('cat')
             .leftJoinAndSelect('cat.products', 'products', 'products.isService = true',)
             .orderBy('cat.orderBy', 'ASC')
             .where({ storeId: storeId, isActive: true })
@@ -33,33 +33,33 @@ export class ServiceService {
     }
 
     async saveService(service: CreateServiceDto, storeId: number) {
-        const { staffs, tax } = service;
-        let listStaff = [];
-        let staffIds = [];
-        let taxId = tax?.id ? tax?.id : null;
+        // const { staffs, tax } = service;
+        // let listStaff = [];
+        // let staffIds = [];
+        // let taxId = tax?.id ? tax?.id : null;
 
-        if (staffs?.length > 0) {
-            for (let staff of staffs) {
-                if (staff.id) {
-                    staffIds.push(staff.id);
-                } else {
-                    staff.storeId = storeId;
-                    listStaff.push(staff as StaffEntity);
-                }
-            }
-            listStaff = staffIds.length > 0 ? await StaffEntity.createQueryBuilder('staff').where('staff.id in (:ids)', { ids: staffIds }).getMany() : await StaffEntity.save(listStaff);
-            delete service.staffs;
-        }
+        // if (staffs?.length > 0) {
+        //     for (let staff of staffs) {
+        //         if (staff.id) {
+        //             staffIds.push(staff.id);
+        //         } else {
+        //             staff.storeId = storeId;
+        //             listStaff.push(staff as StaffEntity);
+        //         }
+        //     }
+        //     listStaff = staffIds.length > 0 ? await StaffEntity.createQueryBuilder('staff').where('staff.id in (:ids)', { ids: staffIds }).getMany() : await StaffEntity.save(listStaff);
+        //     delete service.staffs;
+        // }
 
-        delete service.tax;
+        // delete service.tax;
 
-        const newService = service as ProductEntity;
-        newService.storeId = storeId;
-        newService.isService = true;
-        newService.staffs = listStaff;
-        newService.taxId = taxId;
+        // const newService = service as CategoryEntity;
+        // newService.storeId = storeId;
+        // newService.isService = true;
+        // newService.staffs = listStaff;
+        // newService.taxId = taxId;
 
-        return ProductEntity.save(newService);
+        // return ProductEntity.save(newService);
     }
 
     async updateService(id: number, service: ProductEntity) {

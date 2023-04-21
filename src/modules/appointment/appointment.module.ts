@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { SettingModule } from './setting/setting.module';
 import { StaffModule } from './staff/staff.module';
-import { ServiceModule } from './service/service.module';
+import { ServiceModule } from '../service/service.module';
 import { BookingModule } from '../booking/booking.module';
 import { BookingWebModule } from './booking-web/booking-web.module';
 import { ActivityModule } from './activity/activity.module';
