@@ -1,53 +1,20 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AppointmentBookingEntity } from 'src/entities/Booking.entity';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { OpenHourEntity } from 'src/entities/OpenHour.entity';
-import { PackageCategoryEntity } from 'src/entities/Package.entity';
 import { StaffEntity } from 'src/entities/Staff.entity';
-import { StaffBreakTimeEntity } from 'src/entities/StaffBreakTime.entity';
 import { StaffTimeOffEntity } from 'src/entities/TimeOff.entity';
-import { StaffWorkingHourEntity } from 'src/entities/WorkingHour.entity';
-import { DataBookingI } from './dto/data-booking.interface';
 import { BookingInfo } from './dto/data-convert.dto';
 import { QueryBookingByStaffDto } from './dto/query-booking-staff.dto';
 import { QueryStaffServices } from './dto/query-staff-services.dto';
-import { QueryStaffDto } from './dto/query-staff.dto';
-import { PaginationDto } from "../../../shared/dto/pagination.dto";
+import { PaginationDto } from "../../shared/dto/pagination.dto";
 import { AddServiceToStaffDto } from './dto/add-service-to-staff.dto';
+import { PackageEntity } from 'src/entities/Package.entity';
+import { WorkingHourEntity } from 'src/entities/WorkingHour.entity';
+import { BookingEntity } from 'src/entities/Booking.entity';
+import { CreateStaffDto } from './dto/create-staff.dto';
 
 @Injectable()
 export class StaffService {
   async getStaffs(storeId: number, query: QueryStaffServices = new QueryStaffServices()) {
-    // const staffB = await StaffEntity.createQueryBuilder('s')
-    //   .leftJoinAndMapMany(
-    //     's.services',
-    //     'product',
-    //     'services',
-    //     'services.id IN (select sp.productId from `staff_services_product` sp where sp.staffId = s.id) and services.isActive = true',
-    //   )
-    //   .leftJoinAndMapMany(
-    //     's.workingHours',
-    //     'staff_working_hour',
-    //     'w',
-    //     'w.staffId = s.id',
-    //   )
-    //   .leftJoinAndMapMany(
-    //     's.breakTimes',
-    //     'staff_break_time',
-    //     'b',
-    //     'b.staffId = s.id',
-    //   )
-    //   .leftJoinAndMapMany(
-    //     's.timeOffs',
-    //     'staff_time_off',
-    //     't',
-    //     't.staffId = s.id',
-    //   )
-    //   .where('s.storeId=:storeId', { storeId })
-    //   .andWhere('s.isActive = true')
-    //   .orderBy('s.name', 'ASC')
-    //   .take(query.size)
-    //   .skip(query.page * query.size)
-    //   .getQuery();
     const [staffs, count] = await StaffEntity.createQueryBuilder('staff')
       .leftJoinAndSelect('staff.services', 'services', 'services.isActive = true',)
       .leftJoinAndSelect('staff.workingHours', 'workingHours')
@@ -70,7 +37,7 @@ export class StaffService {
     let packages = [];
 
     if (packageIds.length > 0) {
-      packages = await PackageCategoryEntity.createQueryBuilder('package')
+      packages = await PackageEntity.createQueryBuilder('package')
         .leftJoinAndSelect("package.services", "services", "services.isActive = true")
         .where("package.id in (:packageIds) ", { packageIds })
         .getRawMany();
@@ -121,28 +88,33 @@ export class StaffService {
   //   return staffs.getMany();
   // }
 
-  async createStaff(staff: StaffEntity, storeId: number) {
-    staff.storeId = storeId;
-    let isNew = !staff.id;
-    let newStaff = await StaffEntity.save(staff);
+  async createStaff(bodyStaff: CreateStaffDto, storeId: number) {
+    let staff = await StaffEntity.save(<StaffEntity>{
+      name: bodyStaff.name,
+      email: bodyStaff.email,
+      phoneNumber: bodyStaff.phoneNumber,
+      avatar: bodyStaff.avatar,
+      description: bodyStaff.description,
+      breakTime: bodyStaff.breakTime,
+      storeId: storeId
+    })
 
-    if (isNew) {
-      const storeOpenHours = await OpenHourEntity.find({ where: { storeId: storeId } })
-      if (storeOpenHours && storeOpenHours.length > 0) {
-        newStaff.workingHours = [];
-        for (const w of storeOpenHours) {
-          const workingHour = new StaffWorkingHourEntity();
-          workingHour.day = w.day;
-          workingHour.fromHour = w.fromHour;
-          workingHour.toHour = w.toHour;
-          workingHour.open = w.open;
-          workingHour.staffId = newStaff.id;
-          newStaff.workingHours.push(workingHour);
-        }
-      }
+    let workingHours = [];
+
+    const storeOpenHours = await OpenHourEntity.find({ where: { storeId: storeId } })
+
+    for (const w of storeOpenHours) {
+      const workingHour = new WorkingHourEntity();
+      workingHour.day = w.day;
+      workingHour.fromHour = w.fromHour;
+      workingHour.toHour = w.toHour;
+      workingHour.open = w.open;
+      workingHour.staffId = staff.id;
+      workingHours.push(workingHour);
     }
-    newStaff = await StaffEntity.save(newStaff);
-    return newStaff;
+
+    WorkingHourEntity.save(workingHours);
+    return staff;
   }
 
   async importStaff(staffs: StaffEntity[], storeId: number) {
@@ -157,7 +129,6 @@ export class StaffService {
   async deleteStaff(id: number) {
     const delete_staff = await StaffEntity.findOneBy({ id });
     delete_staff.isActive = false;
-    delete_staff.directLink = null;
 
     if (!delete_staff) throw new NotFoundException(id);
     return StaffEntity.save(delete_staff);
@@ -168,7 +139,7 @@ export class StaffService {
     if (storeOpenHours && storeOpenHours.length > 0) {
       staff.workingHours = [];
       for (let w of storeOpenHours) {
-        let workingHour = new StaffWorkingHourEntity();
+        let workingHour = new WorkingHourEntity();
         workingHour.day = w.day;
         workingHour.fromHour = w.fromHour;
         workingHour.toHour = w.toHour;
@@ -186,7 +157,7 @@ export class StaffService {
       .leftJoinAndSelect("staff.timeOffs", "timeOffs")
       .where("staff.storeId = :storeId ", { storeId: storeId });
 
-    let query_booking = AppointmentBookingEntity.createQueryBuilder('booking')
+    let query_booking = BookingEntity.createQueryBuilder('booking')
       .leftJoinAndSelect('booking.customer', 'customer')
       .leftJoin('customer.companyCustomer', 'companyCustomer', 'companyCustomer.companyId = :companyId', { companyId })
       .leftJoinAndSelect('booking.bookingInfo', 'bookingInfo')
@@ -264,10 +235,6 @@ export class StaffService {
     return StaffEntity.save(staffUp);
   }
 
-  deleteBreakTime(id: number) {
-    return StaffBreakTimeEntity.delete(id);
-  }
-
   async getStaff(id: number, storeId: number) {
     const staff = await StaffEntity.createQueryBuilder('staff')
       .leftJoin('staff.store', 'store')
@@ -280,7 +247,7 @@ export class StaffService {
       // .addGroupBy("staff.id")
       .getOne();
 
-    return this.convertBooking(staff)
+    // return this.convertBooking(staff)
 
     // let staff = await StaffEntity.createQueryBuilder("staff").where("staff.id = :id and staff.storeId = :storeId", { id: id, storeId }).getOne()
 
@@ -294,35 +261,35 @@ export class StaffService {
     // return { response: this.convertDataBookingByStaff(bookings, staff) };
   }
 
-  convertBooking(staff: StaffEntity) {
-    let bookings: DataBookingI[] = []
-    let bookingInfos = staff.bookingInfos
+  // convertBooking(staff: StaffEntity) {
+  //   let bookings: DataBookingI[] = []
+  //   let bookingInfos = staff.bookingInfos
 
-    bookingInfos.forEach((bInfo) => {
-      let _data = []
-      let data = bookings.find((booking) => booking.bookingId == bInfo.bookingId)
+  //   bookingInfos.forEach((bInfo) => {
+  //     let _data = []
+  //     let data = bookings.find((booking) => booking.bookingId == bInfo.bookingId)
 
-      if (!data) {
-        _data.push(bInfo);
-        bookings.push({ bookingId: bInfo.bookingId, data: _data })
-      } else {
-        let index = bookings.findIndex((booking) => booking.bookingId === bInfo.bookingId)
+  //     if (!data) {
+  //       _data.push(bInfo);
+  //       bookings.push({ bookingId: bInfo.bookingId, data: _data })
+  //     } else {
+  //       let index = bookings.findIndex((booking) => booking.bookingId === bInfo.bookingId)
 
-        let data01 = bookings[index].data
-        data01.push(bInfo)
+  //       let data01 = bookings[index].data
+  //       data01.push(bInfo)
 
-        bookings[index] = { ...bookings[index], data: data01 }
-      }
-    })
+  //       bookings[index] = { ...bookings[index], data: data01 }
+  //     }
+  //   })
 
-    let _bookings = []
+  //   let _bookings = []
 
-    for (let booking of bookings) {
-      _bookings.push(this.convertData(booking.data))
-    }
+  //   for (let booking of bookings) {
+  //     _bookings.push(this.convertData(booking.data))
+  //   }
 
-    return { ...staff, bookings: _bookings, bookingInfos: undefined }
-  }
+  //   return { ...staff, bookings: _bookings, bookingInfos: undefined }
+  // }
 
   convertData(data: BookingInfo[]) {
     let services = []
@@ -354,7 +321,7 @@ export class StaffService {
     }
   }
 
-  convertReponseBooking(booking: AppointmentBookingEntity) {
+  convertReponseBooking(booking: BookingEntity) {
     let services = []
     let packages = []
 
@@ -384,7 +351,7 @@ export class StaffService {
     return _booking;
   }
 
-  convertDataBookingByStaff(listBooking: AppointmentBookingEntity[], staff: StaffEntity) {
+  convertDataBookingByStaff(listBooking: BookingEntity[], staff: StaffEntity) {
     let _staff = staff as any;
     let _bookings = [];
 

@@ -8,7 +8,6 @@ import { CreateStaffDto } from './dto/create-staff.dto';
 import { ImportStaffDto } from './dto/import-staff.dto';
 import { QueryBookingByStaffDto } from './dto/query-booking-staff.dto';
 import { QueryStaffServices } from './dto/query-staff-services.dto';
-import { QueryStaffDto } from './dto/query-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { StaffService } from './staff.service';
 import { AddServiceToStaffDto } from './dto/add-service-to-staff.dto';
@@ -19,6 +18,12 @@ import { AddServiceToStaffDto } from './dto/add-service-to-staff.dto';
 @UseGuards(JwtAuthenticationGuard)
 export class StaffController {
     constructor(private readonly staffService: StaffService) { }
+
+    @Post()
+    @UsePipes(new ValidationPipe())
+    async createStaff(@Body() body: CreateStaffDto, @User('storeId') storeId: number) {
+        return this.staffService.createStaff(body as StaffEntity, storeId);
+    }
 
     @Get()
     async getStaffs(@User('storeId') storeId: number, @Query() query: QueryStaffServices) {
@@ -35,21 +40,12 @@ export class StaffController {
         return this.staffService.getBookingByStaff(query, storeId, companyId);
     }
 
-    // @Get("/calendar")
-    // getStaffCalendar(@Query() query: QueryStaffDto, @User('storeId') storeId: number, @User('companyId') companyId: number) {
-    //     return this.staffService.getStaffsCalendar(storeId, companyId, query);
-    // }
-
     @Put("/:staffId/services")
     addServiceToStaff(@Param("staffId") staffId: number, @User("storeId") storeId: number, @Body() body: AddServiceToStaffDto) {
         return this.staffService.addServiceToStaff(staffId, storeId, body);
     }
 
-    @Post()
-    @UsePipes(new ValidationPipe())
-    async createStaff(@Body() body: CreateStaffDto, @User('storeId') storeId: number) {
-        return this.staffService.createStaff(body as StaffEntity, storeId);
-    }
+   
 
     @Post('/import')
     @UsePipes(new ValidationPipe())
@@ -66,11 +62,6 @@ export class StaffController {
     @Get('/:staffId')
     getStaff(@Param('staffId') staffId: number, @User('storeId') storeId: number) {
         return this.staffService.getStaff(staffId, storeId);
-    }
-
-    @Delete('/breaktime/:id')
-    async deleteBreakTime(@Param('id') id: number) {
-        return this.staffService.deleteBreakTime(id);
     }
 
     @Delete('/:id')

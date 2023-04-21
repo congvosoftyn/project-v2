@@ -8,7 +8,6 @@ import { VerifyEmailDto } from './dto/VerifyEmail.dto';
 import { User } from './decorators/user.decorator';
 import { ValidationPipe } from 'src/shared/pipes/validation.pipe';
 import { FirebaseAuthDto } from './dto/firebase-auth.dto';
-import { CreateAccountDto } from './dto/create-account.dto';
 import JwtAuthenticationGuard from 'src/shared/guards/jwtAuthenticationGuard';
 import { LoginDto } from './dto/login.dto';
 import { QueryLogoutDto } from './dto/query-logout.dto';

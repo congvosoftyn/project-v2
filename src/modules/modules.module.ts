@@ -5,11 +5,12 @@ import { RedisCacheModule } from './cache/redisCache.module';
 import { CustomerModule } from './customer/customer.module';
 import { UploadModule } from './upload/upload.module';
 import { StoreModule } from './store/store.module';
-import { BillingModule } from './billing/billing.module';
 import { AppointmentModule } from './appointment/appointment.module';
 import { PackageModule } from './package/package.module';
 import { BookingModule } from './booking/booking.module';
 import { CategoryModule } from './category/category.module';
+import { ServiceModule } from './service/service.module';
+import { StaffModule } from './staff/staff.module';
 
 
 @Module({
@@ -20,11 +21,12 @@ import { CategoryModule } from './category/category.module';
         CustomerModule,
         UploadModule,
         StoreModule,
-        BillingModule,
         AppointmentModule,
         PackageModule,
         BookingModule,
-        CategoryModule
+        CategoryModule,
+        ServiceModule,
+        StaffModule
     ],
 })
 export class ModulesModule { }

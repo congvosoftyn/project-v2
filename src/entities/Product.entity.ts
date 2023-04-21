@@ -46,7 +46,6 @@ export class ProductEntity extends BaseEntity {
   @Column({ nullable: true })
   photo: string;
 
-
   @Column({ default: true })
   isActive: boolean;
 

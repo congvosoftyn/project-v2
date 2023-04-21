@@ -4,6 +4,8 @@ import { CategoryEntity } from 'src/entities/Category.entity';
 import { StaffEntity } from 'src/entities/Staff.entity';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { PaginationDto } from 'src/shared/dto/pagination.dto';
+import { In } from 'typeorm';
+import { TaxEntity } from 'src/entities/Tax.entity';
 
 @Injectable()
 export class ServiceService {
@@ -32,34 +34,28 @@ export class ServiceService {
         return new PaginationDto(services, count, page, size)
     }
 
-    async saveService(service: CreateServiceDto, storeId: number) {
-        // const { staffs, tax } = service;
-        // let listStaff = [];
-        // let staffIds = [];
-        // let taxId = tax?.id ? tax?.id : null;
+    async saveService(bodyService: CreateServiceDto, storeId: number) {
+        const { staffIds } = bodyService;
+        let staffs = await StaffEntity.find({ where: { id: In(staffIds) } });
+        let category = await CategoryEntity.findOne({ where: { id: bodyService.categoryId } });
+        let taxId = bodyService?.taxId ? bodyService?.taxId : null;
+        let tax = null;
+        
+        if (taxId != null) {
+            tax = await TaxEntity.findOne({ where: { id: taxId } });
+        }
 
-        // if (staffs?.length > 0) {
-        //     for (let staff of staffs) {
-        //         if (staff.id) {
-        //             staffIds.push(staff.id);
-        //         } else {
-        //             staff.storeId = storeId;
-        //             listStaff.push(staff as StaffEntity);
-        //         }
-        //     }
-        //     listStaff = staffIds.length > 0 ? await StaffEntity.createQueryBuilder('staff').where('staff.id in (:ids)', { ids: staffIds }).getMany() : await StaffEntity.save(listStaff);
-        //     delete service.staffs;
-        // }
-
-        // delete service.tax;
-
-        // const newService = service as CategoryEntity;
-        // newService.storeId = storeId;
-        // newService.isService = true;
-        // newService.staffs = listStaff;
-        // newService.taxId = taxId;
-
-        // return ProductEntity.save(newService);
+        return ProductEntity.save(<ProductEntity>{
+            name: bodyService.name,
+            cost: bodyService.cost,
+            price: bodyService.price,
+            stocks: bodyService.stocks,
+            description: bodyService.description,
+            photo: bodyService.photo,
+            serviceDuration: bodyService.serviceDuration,
+            category,
+            staffs, tax
+        });
     }
 
     async updateService(id: number, service: ProductEntity) {
