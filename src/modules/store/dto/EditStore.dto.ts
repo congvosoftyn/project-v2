@@ -5,51 +5,32 @@ export class EditStoreDto {
     name: string;
 
     @IsString()
-    @IsOptional()
-    categories?: string;
+    categories: string;
 
     @IsString()
-    @IsOptional()
-    phoneNumber?: string;
+    phoneNumber: string;
 
     @IsString()
     @IsEmail()
-    @IsOptional()
-    email?: string;
+    email: string;
+
+    @IsString()
+    address: string;
+
+    @IsString()
+    city: string;
+
+    @IsString()
+    state: string;
+
+    @IsString()
+    zipcode: string;
 
     @IsString()
     @IsOptional()
-    address?: string;
+    icon: string;
 
     @IsString()
     @IsOptional()
-    address2?: string;
-
-    @IsString()
-    @IsOptional()
-    city?: string;
-
-    @IsString()
-    @IsOptional()
-    state?: string;
-
-    @IsString()
-    @IsOptional()
-    zipcode?: string;
-
-    // // @IsLatLong()
-    // @IsOptional()
-    // latitude?: number;
-
-    // // @IsLongitude()
-    // @IsOptional()
-    // longitude?: number;
-
-    @IsString()
-    @IsOptional()
-    icon?: string;
-
-    @IsString()
-    @IsOptional()
-    image?: string;
+    image: string;
 }

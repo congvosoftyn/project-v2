@@ -1,6 +1,5 @@
 import { ISendMailOptions, MailerService } from '@nestjs-modules/mailer';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { AppointmentBookingEntity } from 'src/entities/Booking.entity';
 import * as fs from 'fs';
 import * as path from "path";
 

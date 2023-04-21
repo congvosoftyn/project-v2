@@ -6,12 +6,11 @@ import { UserEntity } from 'src/entities/User.entity';
 import { DataStoredInToken } from 'src/shared/interfaces/DataStoreInToken.interface';
 import { TokenData } from 'src/shared/interfaces/TokenData.interface';
 import { EmailService } from '../email/email.service';
-import { CreateStoreDto, CreateUserDto } from './dto/createUser.dto';
+import { CreateUserDto } from './dto/createUser.dto';
 import * as jwt from 'jsonwebtoken';
 import { Response } from 'express';
 import { RedisCacheService } from '../cache/redisCache.service';
 import { PostDataDto } from './dto/PostData.dto';
-import { FindUsersDto } from './dto/FindUsers.dto';
 import { ChangePasswordDto } from './dto/ChangePassword.dto';
 import { UpdateMyUserDto } from './dto/UpdateMyUser.dto';
 import { UserGateway } from './user.gateway';
@@ -21,10 +20,10 @@ import { CreateUserDTO } from './dto/create-user.dto';
 import crypto = require('crypto');
 import { getAuth } from 'firebase-admin/auth';
 import { UserTokenDTO } from './dto/user-token.dto';
-import { CreateAccountDto } from './dto/create-account.dto';
 import { LoginDto } from './dto/login.dto';
 import { NotifyService } from '../notify/notify.service';
 import { SettingEntity } from 'src/entities/Setting.entity';
+import { CreateStoreDto } from '../store/dto/create-store.dto';
 
 @Injectable()
 export class UserService {
@@ -85,48 +84,6 @@ export class UserService {
     const token = await this.createToken(user, newStore.id);
     const resonpose = { userInfo: user, accessToken: token };
     return resonpose;
-  }
-
-  async createAccount(_user: CreateAccountDto) {
-    const { email, fullName, password, packageId } = _user;
-
-    const findUser = await UserEntity.findOneBy({ email });
-    if (findUser) {
-      throw new HttpException('User already existed!!', HttpStatus.CONFLICT);
-    }
-    const businessName: string = fullName || 'New Business';
-
-    const user = new UserEntity();
-    let store = new StoreEntity();
-    store.email = email;
-    store.name = businessName;
-    user.email = email;
-    user.password = password;
-    user.hashPassword();
-
-    store = await StoreEntity.save(store);
-    store.openHours = [];
-
-    let openHours = [];
-
-    for (let i = 0; i < 7; i++) {
-      openHours.push(<OpenHourEntity>{
-        day: i,
-        open: true,
-        store
-      });
-    }
-
-    OpenHourEntity.save(openHours);
-
-    // create AppointmentSetting
-    const setting = new SettingEntity();
-    setting.store = store;
-    setting.save();
-
-    //TODO add google place API to get review link
-    //google review link  =https://search.google.com/local/writereview?placeid=
-    return store;
   }
 
   async createToken(user: UserEntity, storeId?: number) {
@@ -213,69 +170,12 @@ export class UserService {
   }
 
   async getUserByID(userId: number) {
-    const user = await UserEntity.createQueryBuilder('user').leftJoinAndSelect("user.company", "company").where("user.id = :userId", { userId }).getOne();
+    const user = await UserEntity.createQueryBuilder('user').where("user.id = :userId", { userId }).getOne();
     if (!user) throw new HttpException(`User with id ${userId} not found`, HttpStatus.NOT_FOUND,);
     return user;
   }
 
-  async findUsers(_findUsers: FindUsersDto, companyId: number) {
-    const skip: number = _findUsers.pageNumber ? +_findUsers.pageNumber : 0;
-    const take: number = _findUsers.pageSize ? +_findUsers.pageSize : 10;
-    const sortField: string = _findUsers.sortField ? _findUsers.sortField : '';
-    const sortOrder = _findUsers.sortOrder == 'asc' ? 'ASC' : 'DESC';
-    let search: string;
-    if (_findUsers.search) {
-      search = _findUsers.search;
-    } else if (_findUsers.filter) {
-      search = _findUsers.filter;
-    } else {
-      search = '';
-    }
-
-    const query = UserEntity
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.address', 'address')
-      .where({ companyId })
-      .andWhere(`(user.email LIKE :keywork OR user.fullName LIKE :keywork)`, { keywork: `%${search}%` })
-      .take(take)
-      .skip(skip)
-
-    if (sortField) {
-      query.orderBy('user.' + sortField, sortOrder);
-    }
-    return query.getMany();
-  }
-
-  async forgotPassword(email: string): Promise<{ status: Boolean }> {
-    // const user = await UserEntity.findOne({ email });
-    const user = await UserEntity.createQueryBuilder('user').where('user.email = :email', { email }).getOne();
-
-    // if (!user) return { email: email };
-    if (!user) return { status: false };
-
-    let randomstring = '';
-    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz';
-    const string_length = 8;
-    for (let i = 0; i < string_length; i++) {
-      const rnum = Math.floor(Math.random() * chars.length);
-      randomstring += chars.substring(rnum, rnum + 1);
-    }
-
-    const nextDate = new Date();
-    //Send email with password
-    nextDate.setTime(new Date().getTime() + 1000 * 24 * 3600);
-    UserEntity.save(user);
-
-    return { status: true };
-  }
-
-  async checkUsername(email: string): Promise<{ match: boolean }> {
-    const result = await UserEntity.findOneBy({ email });
-    return { match: !!result }
-  }
-
   async changePassword(body: ChangePasswordDto, id: number, res: Response,) {
-    //Get ID from JWT
     let user: UserEntity;
     try {
       user = await UserEntity.findOneOrFail({ where: { id: id } });
@@ -283,10 +183,7 @@ export class UserService {
       throw new UnauthorizedException();
     }
 
-    //Check if old password matchs
-    if (!user.checkIfUnencryptedPasswordIsValid(body.oldPassword)) {
-      throw new UnauthorizedException();
-    }
+   
     //Validate de model (password lenght)
     user.password = body.newPassword;
     const errors = await validate(user);
@@ -323,7 +220,7 @@ export class UserService {
     return this.getUserByID(profile.id);
   }
 
-   verifyEmail(code: string, email: string) {
+  verifyEmail(code: string, email: string) {
     return UserEntity.findOneBy({ email: email });
   }
 
@@ -412,7 +309,7 @@ export class UserService {
       if (body.uid === decodedToken.uid) {
         if (!_user.isActive) UserEntity.update(_user.id, { isActive: true });
 
-        const store = await StoreEntity.findOne({where:{userId: _user.id}})
+        const store = await StoreEntity.findOne({ where: { userId: _user.id } })
 
         return this.buildUserRO(_user.email, store.id);
       }
@@ -456,7 +353,7 @@ export class UserService {
       const errors = { username: 'Email must be unique.' };
       throw new HttpException({ message: 'Input data validation failed', errors }, HttpStatus.BAD_REQUEST,);
     }
-    
+
     const newUser = new UserEntity();
     newUser.fullName = dto.name ?? 'User';
     newUser.email = email;
@@ -488,15 +385,9 @@ export class UserService {
     }
   }
 
-  async createStore(companyId: number, body: CreateStoreDto) {
-    const secretKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-
-    const store = await StoreEntity.save(<StoreEntity>{
-      name: body ? body.name ? body.name : 'string' : 'string',
-
-    });
-
-    return store;
+  async createStore(userId: number, body: CreateStoreDto) {
+    let user = await UserEntity.findOne({ where: { id: userId } });
+    return StoreEntity.save(<StoreEntity>{ name: body ? body.name ? body.name : 'string' : 'string', user });
   }
 
   private async buildUserRO(email: string, storeId?: number) {

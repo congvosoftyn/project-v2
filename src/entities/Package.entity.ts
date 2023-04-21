@@ -12,7 +12,7 @@ export class PackageEntity extends BaseEntity {
 
     @ManyToMany(() => ProductEntity, product => product.package)
     @JoinTable()
-    services: [ProductEntity];
+    services: ProductEntity[];
 
     @ManyToOne(() => CategoryEntity)
     @JoinColumn({ name: 'categoryId' })

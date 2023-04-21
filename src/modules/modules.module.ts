@@ -7,7 +7,7 @@ import { UploadModule } from './upload/upload.module';
 import { StoreModule } from './store/store.module';
 import { BillingModule } from './billing/billing.module';
 import { AppointmentModule } from './appointment/appointment.module';
-import { PackageCategoryModule } from './package/package-category.module';
+import { PackageModule } from './package/package.module';
 import { BookingModule } from './booking/booking.module';
 
 
@@ -21,7 +21,7 @@ import { BookingModule } from './booking/booking.module';
         StoreModule,
         BillingModule,
         AppointmentModule,
-        PackageCategoryModule,
+        PackageModule,
         BookingModule
     ],
 })

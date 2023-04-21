@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, BaseEntity, CreateDateColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, BaseEntity, CreateDateColumn, ManyToOne, JoinColumn } from "typeorm";
+import { StoreEntity } from "./Store.entity";
 
 @Entity('customer')
 export class CustomerEntity extends BaseEntity {
@@ -17,10 +18,10 @@ export class CustomerEntity extends BaseEntity {
   @Column({ nullable: true })
   email: string;
 
-  @Column({ nullable: true })
+  @Column()
   firstName: string;
 
-  @Column({ nullable: true })
+  @Column()
   lastName: string;
 
   @Column({ nullable: true })
@@ -37,6 +38,13 @@ export class CustomerEntity extends BaseEntity {
 
   @Column({ nullable: true })
   description: string;
+
+  @ManyToOne(() => StoreEntity, { onDelete: "CASCADE", onUpdate: "CASCADE" })
+  @JoinColumn({ name: "storeId" })
+  store: StoreEntity;
+
+  @Column()
+  storeId: number;
 
   getFullName() {
     return this.firstName + ' ' + this.lastName;

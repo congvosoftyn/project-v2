@@ -1,14 +1,12 @@
 import { Body, Controller, Delete, Get, Headers, HttpStatus, Param, ParseIntPipe, Post, Put, Query, Req, Res, UseGuards, UsePipes, } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserEntity } from 'src/entities/User.entity';
-import { CreateStoreDto, CreateUserDto } from './dto/createUser.dto';
+import { CreateUserDto } from './dto/createUser.dto';
 import { UserService } from './user.service';
 import { PostDataDto } from './dto/PostData.dto';
 import { VerifyEmailDto } from './dto/VerifyEmail.dto';
-import { UpdateMyUserDto } from './dto/UpdateMyUser.dto';
 import { User } from './decorators/user.decorator';
 import { ValidationPipe } from 'src/shared/pipes/validation.pipe';
-import { FindUsersDto } from './dto/FindUsers.dto';
 import { FirebaseAuthDto } from './dto/firebase-auth.dto';
 import { CreateAccountDto } from './dto/create-account.dto';
 import JwtAuthenticationGuard from 'src/shared/guards/jwtAuthenticationGuard';
@@ -63,29 +61,11 @@ export class UserController {
     return this.userService.getUserByID(UserId);
   }
 
-  @Get('/findUsers')
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthenticationGuard)
-  @UsePipes(new ValidationPipe())
-  async findUsers(@Query() _findUsers: FindUsersDto, @User('companyId') companyId: number,) {
-    return this.userService.findUsers(_findUsers, companyId);
-  }
-
   @Get('me')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthenticationGuard)
   async myUser(@User('userId') userId: number) {
     return this.userService.myUser(userId);
-  }
-
-  @Get('forgot')
-  async forgotPassword(@Query('email') email: string): Promise<{ status: Boolean }> {
-    return this.userService.forgotPassword(email);
-  }
-
-  @Get('checkUsername')
-  async checkUsername(@Param('email') email: string) {
-    return this.userService.checkUsername(email);
   }
 
   @Get('code-again')
@@ -99,23 +79,10 @@ export class UserController {
     return this.userService.createUser(_user);
   }
 
-  @Post('signup')
-  @UsePipes(new ValidationPipe())
-  async createAccount(@Body() _user: CreateAccountDto) {
-    return await this.userService.createAccount(_user);
-  }
-
   @Post('verify')
   @UsePipes(new ValidationPipe())
   async verifyEmail(@Body() { code, email }: VerifyEmailDto) {
     return await this.userService.verifyEmail(code, email);
-  }
-
-  @Put('me')
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthenticationGuard)
-  async updateMyUser(@Body() profile: UpdateMyUserDto) {
-    return this.userService.updateMyUser(profile);
   }
 
   @Put('update')
@@ -130,13 +97,6 @@ export class UserController {
   @UseGuards(JwtAuthenticationGuard)
   async deleteUser(@Param('userId', ParseIntPipe) userId: number) {
     return this.userService.deleteUser(userId);
-  }
-
-  @Put('/update-company/:id')
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthenticationGuard)
-  updateCompany(@Param('id', ParseIntPipe) id: number, @Body() body: CreateStoreDto) {
-    return this.userService.updateCompany(id, body);
   }
 
   @Get("/suggest-business-type")

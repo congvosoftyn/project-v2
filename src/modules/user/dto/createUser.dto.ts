@@ -1,20 +1,6 @@
 import { PartialType } from '@nestjs/swagger';
 import { CreateAccountDto } from './create-account.dto';
-
-export class CreateStoreDto {
-  name: string;
-  address: string;
-  city: string;
-  state: string;
-  zipcode: string;
-  categories: string;
-  phoneNumber: string;
-  image: string;
-  timezone: string;
-  bookingSlotSize: number = 15;
-  notes: string;
-  cancelTime: number = 0;
-}
+import { CreateStoreDto } from 'src/modules/store/dto/create-store.dto';
 
 export class CreateUserDto extends PartialType(CreateAccountDto) {
   phoneNumber: string;
