@@ -1,32 +1,25 @@
-import { Injectable } from '@nestjs/common';
-import { ProductEntity } from 'src/entities/Product.entity';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { ServiceEntity } from 'src/entities/service.entity';
 import { CategoryEntity } from 'src/entities/Category.entity';
 import { StaffEntity } from 'src/entities/Staff.entity';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { PaginationDto } from 'src/shared/dto/pagination.dto';
 import { In } from 'typeorm';
 import { TaxEntity } from 'src/entities/Tax.entity';
+import { UpdateServiceDto } from './dto/update-service.dto';
 
 @Injectable()
 export class ServiceService {
-    getCategories(storeId: number) {
-        return CategoryEntity.createQueryBuilder('cat')
-            .leftJoinAndSelect('cat.products', 'products', 'products.isService = true',)
-            .orderBy('cat.orderBy', 'ASC')
-            .where({ storeId: storeId, isActive: true })
-            .getMany();
-    }
-
     async getServices(storeId: number, search: string, size: number = 50, page: number = 0) {
-        let query = ProductEntity.createQueryBuilder('service')
+        let query = ServiceEntity.createQueryBuilder('service')
             .leftJoinAndSelect('service.tax', 'tax')
-            .where('service.storeId = :storeId AND service.isActive = true AND service.isService = true', { storeId })
-            .orderBy('service.id', 'DESC')
+            .where('service.storeId = :storeId AND service.isService = true', { storeId })
+            .groupBy("service.id, tax.id")
             .take(size)
             .skip(page * size);
 
         if (search) {
-            query = query.andWhere('service.name like :keywork', { keywork: `%${search}%` })
+            query = query.andWhere('LOWER(service.name) LIKE LOWER(:keywork)', { keywork: `%${search}%` })
         }
 
         const [services, count] = await query.getManyAndCount();
@@ -34,48 +27,64 @@ export class ServiceService {
         return new PaginationDto(services, count, page, size)
     }
 
-    async saveService(bodyService: CreateServiceDto, storeId: number) {
+    async createService(bodyService: CreateServiceDto, storeId: number) {
         const { staffIds } = bodyService;
-        let staffs = await StaffEntity.find({ where: { id: In(staffIds) } });
-        let category = await CategoryEntity.findOne({ where: { id: bodyService.categoryId } });
+        let staffs = await StaffEntity.find({ where: { id: In(staffIds), storeId } });
+        let category = await CategoryEntity.findOne({ where: { id: bodyService.categoryId, storeId } });
         let taxId = bodyService?.taxId ? bodyService?.taxId : null;
         let tax = null;
-        
-        if (taxId != null) {
-            tax = await TaxEntity.findOne({ where: { id: taxId } });
+
+        if (taxId && taxId != 0) {
+            tax = await TaxEntity.findOne({ where: { id: taxId, storeId } });
         }
 
-        return ProductEntity.save(<ProductEntity>{
+        return ServiceEntity.save(<ServiceEntity>{
             name: bodyService.name,
             cost: bodyService.cost,
             price: bodyService.price,
             stocks: bodyService.stocks,
             description: bodyService.description,
             photo: bodyService.photo,
-            serviceDuration: bodyService.serviceDuration,
+            duration: bodyService.duration,
             category,
-            staffs, tax
+            staffs, tax,
         });
     }
 
-    async updateService(id: number, service: ProductEntity) {
-        let _service = await ProductEntity.findOne({ where: { id } });
-        _service = await ProductEntity.merge(_service, service);
-        return ProductEntity.save(_service);
+    async findByService(id: number) {
+        const service = await ServiceEntity.findOne({ where: { id } })
+        if (!service) throw new NotFoundException("not found service");
+        return service;
     }
 
-    getStaffsByServices(serviceId: number, search: string) {
-        let query = StaffEntity.createQueryBuilder('staff')
-            .leftJoin('staff.services', 'services', "services.isService = true")
-            .leftJoinAndSelect('staff.workingHours', 'workingHours')
-            .leftJoinAndSelect('staff.breakTimes', 'breakTimes')
-            .leftJoinAndSelect('staff.timeOffs', 'timeOffs')
-            .leftJoinAndSelect('service.tax', 'tax')
-            .where('services.id = :serviceId ', { serviceId })
+    async updateService(id: number, storeId: number, bodyUpdateService: UpdateServiceDto) {
+        let service = await this.findByService(id);
 
-        if (search) {
-            query = query.andWhere('staff.name like :keywork', { keywork: `%${search}%` })
+        const { staffIds } = bodyUpdateService;
+        let staffs = await StaffEntity.find({ where: { id: In(staffIds), storeId } });
+        let taxId = bodyUpdateService?.taxId ? bodyUpdateService?.taxId : null;
+        let tax = null;
+
+        if (taxId && taxId != 0) {
+            tax = await TaxEntity.findOne({ where: { id: taxId, storeId } });
         }
-        return query.getMany();
+
+        return ServiceEntity.save(<ServiceEntity>{
+            ...service,
+            name: bodyUpdateService.name,
+            cost: bodyUpdateService.cost,
+            price: bodyUpdateService.price,
+            stocks: bodyUpdateService.stocks,
+            description: bodyUpdateService.description,
+            photo: bodyUpdateService.photo,
+            duration: bodyUpdateService.duration,
+            staffs,
+            tax
+        });
     }
+
+    deleteService(id: number) {
+        return ServiceEntity.delete({ id });
+    }
+
 }

@@ -1,5 +1,5 @@
 import { BaseEntity, Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { ProductEntity } from "./Product.entity";
+import { ServiceEntity } from "./service.entity";
 import { CategoryEntity } from "./Category.entity";
 
 @Entity({ name: "package" })
@@ -10,9 +10,9 @@ export class PackageEntity extends BaseEntity {
     @Column()
     name: string;
 
-    @ManyToMany(() => ProductEntity, product => product.package)
+    @ManyToMany(() => ServiceEntity, service => service.packages)
     @JoinTable()
-    services: ProductEntity[];
+    services: ServiceEntity[];
 
     @ManyToOne(() => CategoryEntity)
     @JoinColumn({ name: 'categoryId' })

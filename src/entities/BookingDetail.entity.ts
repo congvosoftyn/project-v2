@@ -1,5 +1,5 @@
 import { BaseEntity, Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn, } from 'typeorm';
-import { ProductEntity } from './Product.entity';
+import { ServiceEntity } from './service.entity';
 import { StaffEntity } from './Staff.entity';
 import { BookingEntity } from './Booking.entity';
 import { PackageEntity } from './Package.entity';
@@ -17,9 +17,9 @@ export class BookingDetailEntity extends BaseEntity {
   @Column({ type: 'int' })
   bookingId: number;
 
-  @ManyToOne(() => ProductEntity)
+  @ManyToOne(() => ServiceEntity, { onDelete: "CASCADE", onUpdate: "CASCADE", nullable: true })
   @JoinColumn({ name: 'serviceId' })
-  service: ProductEntity;
+  service: ServiceEntity;
 
   @Column({ type: 'int', nullable: true })
   serviceId: number;
@@ -31,7 +31,7 @@ export class BookingDetailEntity extends BaseEntity {
   @Column({ type: 'int' })
   staffId: number;
 
-  @ManyToOne(() => PackageEntity)
+  @ManyToOne(() => PackageEntity, { onDelete: "CASCADE", onUpdate: "CASCADE", nullable: true })
   @JoinColumn({ name: 'packageId' })
   packages: PackageEntity;
 

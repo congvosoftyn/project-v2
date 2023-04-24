@@ -1,5 +1,5 @@
 import { BaseEntity, Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn, } from 'typeorm';
-import { ProductEntity } from './Product.entity';
+import { ServiceEntity } from './service.entity';
 import { TimeOffEntity } from './TimeOff.entity';
 import { WorkingHourEntity } from './WorkingHour.entity';
 import { StoreEntity } from './Store.entity';
@@ -21,9 +21,9 @@ export class StaffEntity extends BaseEntity {
   @Column({ nullable: true })
   avatar: string;
 
-  @ManyToMany((type) => ProductEntity, (product) => product.staffs)
+  @ManyToMany((type) => ServiceEntity, (service) => service.staffs, { onDelete: "CASCADE", onUpdate: "CASCADE" })
   @JoinTable()
-  services: ProductEntity[];
+  services: ServiceEntity[];
 
   @Column({ nullable: true })
   description: string;

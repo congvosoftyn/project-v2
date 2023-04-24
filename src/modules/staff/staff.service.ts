@@ -26,7 +26,7 @@ export class StaffService {
       .skip(query.page * query.size)
 
     if (query.keyword) {
-      queryStaff = queryStaff.andWhere("LOWER(staff.name) ILIKE LOWER(:keyword)", { keyword: `%${query.keyword}%` })
+      queryStaff = queryStaff.andWhere("LOWER(staff.name) LIKE LOWER(:keyword)", { keyword: `%${query.keyword}%` })
     }
 
     const [staffs, count] = await queryStaff.getManyAndCount();

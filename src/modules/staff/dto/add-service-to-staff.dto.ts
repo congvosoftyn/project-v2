@@ -1,5 +1,5 @@
-import { ProductEntity } from "src/entities/Product.entity";
+import { ServiceEntity } from "src/entities/service.entity";
 
 export class AddServiceToStaffDto{
-    services: ProductEntity[];
+    services: ServiceEntity[];
 }

@@ -1,5 +1,5 @@
 import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { ProductEntity } from "./Product.entity";
+import { ServiceEntity } from "./service.entity";
 import { StoreEntity } from "./Store.entity";
 import { PackageEntity } from "./Package.entity";
 
@@ -21,8 +21,8 @@ export class CategoryEntity extends BaseEntity {
     @Column({ type: 'int' })
     storeId: number;
 
-    @OneToMany(type => ProductEntity, product => product.category, { onDelete: "CASCADE", onUpdate: "CASCADE" })
-    services: ProductEntity[];
+    @OneToMany(type => ServiceEntity, product => product.category, { onDelete: "CASCADE", onUpdate: "CASCADE" })
+    services: ServiceEntity[];
 
     @OneToMany(() => PackageEntity, aPackage => aPackage.category, { onDelete: "CASCADE", onUpdate: "CASCADE" })
     packages: [PackageEntity];

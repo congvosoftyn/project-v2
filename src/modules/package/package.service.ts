@@ -2,12 +2,12 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PackageEntity } from 'src/entities/Package.entity';
 import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
-import { ProductEntity } from 'src/entities/Product.entity';
+import { ServiceEntity } from 'src/entities/service.entity';
 
 @Injectable()
 export class PackageService {
   async create(createPackageDto: CreatePackageDto) {
-    let services = await ProductEntity.createQueryBuilder("service")
+    let services = await ServiceEntity.createQueryBuilder("service")
       .where("service.id in (:ids) and service.isService = true", { ids: createPackageDto.serviceIds })
       .getMany()
     return PackageEntity.save(<PackageEntity>{
@@ -36,8 +36,8 @@ export class PackageService {
   async update(id: number, updatePackageDto: UpdatePackageDto) {
     let aPackage = await this.findOne(id);
 
-    let services = await ProductEntity.createQueryBuilder("service")
-      .where("service.id in (:ids) and service.isService = true", { ids: updatePackageDto.serviceIds })
+    let services = await ServiceEntity.createQueryBuilder("service")
+      .where("service.id in (:ids)", { ids: updatePackageDto.serviceIds })
       .getMany()
 
     aPackage.name = updatePackageDto.name;

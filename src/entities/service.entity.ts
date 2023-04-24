@@ -1,12 +1,11 @@
-import { BaseEntity, Column, Entity, JoinColumn, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn, } from 'typeorm';
+import { BaseEntity, Column, Entity, JoinColumn, ManyToMany, ManyToOne, PrimaryGeneratedColumn, } from 'typeorm';
 import { StaffEntity } from './Staff.entity';
-import { StoreEntity } from './Store.entity';
 import { TaxEntity } from './Tax.entity';
 import { CategoryEntity } from './Category.entity';
 import { PackageEntity } from './Package.entity';
 
-@Entity({ name: 'product', orderBy: { orderBy: 'ASC' } })
-export class ProductEntity extends BaseEntity {
+@Entity({ name: 'service' })
+export class ServiceEntity extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -47,23 +46,13 @@ export class ProductEntity extends BaseEntity {
   photo: string;
 
   @Column({ default: true })
-  isActive: boolean;
+  actived: boolean;
 
   @Column({ default: false })
   isPrivate: boolean;
 
-  @Column({ default: false })
-  isService: boolean;
-
   @Column({ default: 60 })
-  serviceDuration: number;
-
-  @ManyToOne((type) => StoreEntity, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'storeId' })
-  store: StoreEntity;
-
-  @Column({ type: 'int' })
-  storeId: number;
+  duration: number;
 
   @ManyToOne((type) => TaxEntity, { onDelete: "CASCADE", onUpdate: "CASCADE", nullable: true })
   @JoinColumn({ name: 'taxId' })
@@ -78,9 +67,9 @@ export class ProductEntity extends BaseEntity {
   @Column({ type: 'int', nullable: true })
   categoryId: number;
 
-  @ManyToMany(() => StaffEntity, (staff) => staff.services)
+  @ManyToMany(() => StaffEntity, (staff) => staff.services, { onDelete: "CASCADE", onUpdate: "CASCADE" })
   staffs: StaffEntity[];
 
   @ManyToMany((type) => PackageEntity)
-  package: PackageEntity[];
+  packages: PackageEntity[];
 }

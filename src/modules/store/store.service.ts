@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { OpenHourEntity } from 'src/entities/OpenHour.entity';
-import { ProductEntity } from 'src/entities/Product.entity';
 import { StoreEntity } from 'src/entities/Store.entity';
 import { RedisCacheService } from '../cache/redisCache.service';
 import { UserEntity } from 'src/entities/User.entity';
@@ -12,11 +11,9 @@ import { UpdateStoreDto } from './dto/update-store.dto';
 export class StoreService {
     constructor(private cacheService: RedisCacheService,) { }
 
-    async getStores(userId: number) {
+    getStores(userId: number) {
         return StoreEntity.find({ where: { userId }, relations: ['openHours'] });
     }
-
-
 
     async getStore(id: number) {
         const store = await StoreEntity.findOne({ where: { id }, relations: ['openHours', 'setting'] });

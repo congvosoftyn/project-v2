@@ -1,6 +1,6 @@
 import { BookingEntity } from "src/entities/Booking.entity";
 import { PackageEntity } from "src/entities/Package.entity";
-import { ProductEntity } from "src/entities/Product.entity";
+import { ServiceEntity } from "src/entities/service.entity";
 
 export class BookingInfo {
     id: number;
@@ -12,7 +12,7 @@ export class BookingInfo {
     deleted: boolean;
     created_at: Date;
     updated_at: Date;
-    service: ProductEntity;
+    service: ServiceEntity;
     packages: PackageEntity;
     booking: BookingEntity;
 }
