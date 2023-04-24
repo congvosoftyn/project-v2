@@ -12,7 +12,8 @@ import { CustomerService } from './customer.service';
     EmailModule,
   ],
   controllers: [CustomerController],
-  providers: [CustomerService,],
+  providers: [CustomerService],
+  exports: [CustomerService]
 })
 
 export class CustomerModule { }

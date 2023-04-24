@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CustomerEntity } from 'src/entities/Customer.entity';
 import { CreateCustomerDto, } from './dto/create-customer.dto';
 import { GetCustomerDto } from './dto/GetCustomer.dto';
@@ -100,7 +100,7 @@ export class CustomerService {
       CustomerEntity.save(updateCustomers);
       return "Success!";
     } catch (error) {
-      console.error("error => ",error);
+      console.error("error => ", error);
       throw new BadRequestException("Import no success!")
     }
   }
@@ -112,7 +112,9 @@ export class CustomerService {
 
     let query = CustomerEntity
       .createQueryBuilder('customer')
-      .groupBy('customer.id')
+      .leftJoin("customer.store", "store")
+      .where("customer.storeId = :storeId", { storeId })
+      .groupBy('customer.id, store.id')
       .skip(page * size)
       .take(size)
 
@@ -126,8 +128,12 @@ export class CustomerService {
     return query.getMany()
   }
 
-  getCustomerById(id: number) {
-    return CustomerEntity.findOneOrFail({ where: { id } });
+  async getCustomerById(id: number) {
+    const customer = await CustomerEntity.createQueryBuilder("cus").where("cus.id = :id", { id }).getOne()
+    if(!customer){
+      throw new NotFoundException("Not found customer!");
+    }
+    return customer;
   }
 
   async contactUs(body: ConstactUsDto, customerId: number) {
