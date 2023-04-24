@@ -1,6 +1,6 @@
-import { IsEmail, IsOptional, IsString, IsLatLong, IsLongitude } from "class-validator";
+import { IsEmail, IsString } from "class-validator";
 
-export class EditStoreDto {
+export class UpdateStoreDto {
     @IsString()
     name: string;
 
@@ -27,10 +27,13 @@ export class EditStoreDto {
     zipcode: string;
 
     @IsString()
-    @IsOptional()
     icon: string;
 
     @IsString()
-    @IsOptional()
     image: string;
+
+    timezone: string = 'America/Chicago';
+    bookingSlotSize: number = 15;
+    notes: string;
+    cancelTime: number = 0;
 }

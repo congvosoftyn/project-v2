@@ -84,13 +84,13 @@ export class UserService {
   }
 
   async signin(body: LoginDto) {
-    const { email, password } = body;
+    const { email, password, deviceToken } = body;
+
     let user = await UserEntity.createQueryBuilder('user')
       .leftJoinAndSelect('user.store', 'store')
       .addSelect('user.password')
       .where('user.email = :email', { email })
       .getOne()
-
 
     if (!user) throw new HttpException('Account suppended', HttpStatus.SERVICE_UNAVAILABLE,);
 
@@ -103,7 +103,7 @@ export class UserService {
     const tokenData = await this.createToken(user);
     this.cache.set(tokenData.refreshToken, tokenData.token);
 
-    if (body?.deviceToken) {
+    if (deviceToken && deviceToken !== "string" && Object.keys(deviceToken).length != 0) {
       let topic = body.email.replace(/[^\w\s]/gi, '')
       let result = await this.notifyService.subscribeNotiTopic(topic, body.deviceToken)
       if (result.successCount == 1) {

@@ -37,29 +37,7 @@ async function bootstrap() {
       bearerFormat: 'JWT',
     },
       'access-token'
-    ).addBearerAuth(
-      {
-        description: `[just text field] Please enter token in following format: Bearer <JWT>`,
-        name: 'Authorization',
-        scheme: 'Bearer',
-        type: 'http', // I`ve attempted type: 'apiKey' too
-        in: 'Header',
-        bearerFormat: 'JWT'
-      },
-      'customer-token'
-    )
-    .addBearerAuth(
-      {
-        description: `[just text field] Please enter token in following format: Bearer <JWT>`,
-        name: 'Authorization',
-        scheme: 'Bearer',
-        type: 'http', // I`ve attempted type: 'apiKey' too
-        in: 'Header',
-        bearerFormat: 'JWT'
-      },
-      'no-token'
-    )
-    .build();
+    ).build();
 
   const document = SwaggerModule.createDocument(app, options);
   SwaggerModule.setup('/docs', app, document);

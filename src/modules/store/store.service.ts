@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { OpenHourEntity } from 'src/entities/OpenHour.entity';
 import { ProductEntity } from 'src/entities/Product.entity';
 import { StoreEntity } from 'src/entities/Store.entity';
@@ -6,29 +6,34 @@ import { RedisCacheService } from '../cache/redisCache.service';
 import { UserEntity } from 'src/entities/User.entity';
 import { SettingEntity } from 'src/entities/Setting.entity';
 import { CreateStoreDto } from './dto/create-store.dto';
+import { UpdateStoreDto } from './dto/update-store.dto';
 
 @Injectable()
 export class StoreService {
     constructor(private cacheService: RedisCacheService,) { }
 
     async getStores(userId: number) {
-        return StoreEntity.find({ where: { userId }, relations: ['openHours', 'pictures'] });
+        return StoreEntity.find({ where: { userId }, relations: ['openHours'] });
     }
 
-    async getStore(id: number, _storeId?: number) {
-        const storeId = id || _storeId;
-        const store = await StoreEntity.findOne({ where: { id: storeId }, relations: ['openHours', 'appointmentSetting'] });
+
+
+    async getStore(id: number) {
+        const store = await StoreEntity.findOne({ where: { id }, relations: ['openHours', 'setting'] });
+
+        if(!store) throw new NotFoundException("Not found store!");
 
         if (store && store.openHours.length == 0) {
+            let openHours = [];
             for (let i = 0; i < 7; i++) {
-                const openHour = <OpenHourEntity>{
+                openHours.push(<OpenHourEntity>{
                     day: i,
                     open: true,
-                    storeId: store.id,
-                };
-                await OpenHourEntity.save(openHour);
-                store.openHours.push(openHour);
+                    store
+                })
+
             }
+            OpenHourEntity.save(openHours);
         }
         return store
     }
@@ -136,12 +141,34 @@ export class StoreService {
         return newStore
     }
 
+    async updateStore(id:number, body: UpdateStoreDto){
+        let store = await this.getStore(id);
+        return StoreEntity.save(<StoreEntity>{...store, 
+            name: body.name,
+            categories: body.categories,
+            phoneNumber: body.phoneNumber,
+            email: body.email,
+            address: body.address,
+            city: body.city,
+            zipcode: body.zipcode,
+            image: body.image,
+            timezone: body.timezone,
+            bookingSlotSize: body.bookingSlotSize,
+            notes: body.notes,
+            cancelTime: body.cancelTime,
+        }) 
+    }
+
+    deleteStore(id: number){
+        return StoreEntity.delete(id);
+    }
+
     getStoreCategories() {
         return StoreEntity.createQueryBuilder('store')
             .select("categories")
             .distinct(true)
             .where("store.categories IS NOT NULL ")
-            .where("LENGTH(store.categories)  > 0")
+            .andWhere("LENGTH(store.categories)  > 0")
             .limit(10)
             .getRawMany();
     }
