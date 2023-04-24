@@ -12,8 +12,8 @@ import { UpdateStaffDto } from './dto/update-staff.dto';
 import { StaffService } from './staff.service';
 import { AddServiceToStaffDto } from './dto/add-service-to-staff.dto';
 
-@Controller('appointment/staff')
-@ApiTags('appointment/staff')
+@Controller('staffs')
+@ApiTags('staffs')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthenticationGuard)
 export class StaffController {

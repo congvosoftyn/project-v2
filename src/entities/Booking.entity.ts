@@ -16,7 +16,7 @@ export class BookingEntity extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne((type) => CustomerEntity, { cascade: ['insert', 'update'], eager: true, })
+  @ManyToOne((type) => CustomerEntity, { cascade: ['insert', 'update'], eager: true })
   @JoinColumn({ name: 'customerId' })
   customer: CustomerEntity;
 
@@ -35,7 +35,7 @@ export class BookingEntity extends BaseEntity {
   @Column({ nullable: true })
   note: string;
 
-  @ManyToOne((type) => StoreEntity)
+  @ManyToOne((type) => StoreEntity, { onDelete: "CASCADE", onUpdate: "CASCADE" })
   @JoinColumn({ name: 'storeId' })
   store: StoreEntity;
 
@@ -51,10 +51,10 @@ export class BookingEntity extends BaseEntity {
   @CreateDateColumn({ precision: null, type: 'timestamp' })
   created: Date;
 
-  @Column({default:0})
+  @Column({ default: 0 })
   duration: number;
 
-  @Column({default:0})
+  @Column({ default: 0 })
   extraTime: number;
 
   @Column({ nullable: true })

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CustomerEntity } from 'src/entities/Customer.entity';
-import { CreateCustomerDto,  } from './dto/create-customer.dto';
+import { CreateCustomerDto, } from './dto/create-customer.dto';
 import { FindCustomerDto } from './dto/FindCustomer.dto';
 import { GetCustomerDto } from './dto/GetCustomer.dto';
 import { StoreEntity } from 'src/entities/Store.entity';
@@ -10,12 +10,13 @@ import { ImportCustomerDto } from './dto/ImportCustomer.dto';
 
 @Injectable()
 export class CustomerService {
-  constructor(private emailService: EmailService,) { }
-
+  constructor(
+    private emailService: EmailService
+  ) { }
 
   async newCustomer(bodyCustomer: CreateCustomerDto, storeId: number) {
     bodyCustomer = { ...bodyCustomer, countryCode: bodyCustomer.countryCode ? bodyCustomer.countryCode : "+1" };
-    let store = await StoreEntity.findOne({where:{id: storeId}});
+    let store = await StoreEntity.findOne({ where: { id: storeId } });
 
     return CustomerEntity.save(<CustomerEntity>{
       phoneNumber: bodyCustomer.phoneNumber,
@@ -35,8 +36,7 @@ export class CustomerService {
   deleteCustomer(storeId: number, id: number) {
     return CustomerEntity.createQueryBuilder()
       .delete()
-      .where("storeId = :storeId", { storeId })
-      .andWhere('customerId = :customerId', { customerId: id })
+      .where("storeId = :storeId and customerId = :customerId", { storeId, customerId: id })
       .execute();
   }
 
@@ -88,7 +88,6 @@ export class CustomerService {
     CustomerEntity.save(bodyCustomerNew);
 
     return { status: "OK" }
-
   }
 
   async findCustomers(_findCustomer: FindCustomerDto, companyId: number) {

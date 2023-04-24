@@ -14,5 +14,5 @@ export class CreateCustomerDto {
   avatar?: string;
   description?: string;
   countryCode: string = "+1";
-  isoCode?: string;
+  isoCode?: string = "us";
 }
