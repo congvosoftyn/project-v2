@@ -5,7 +5,6 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { User } from 'src/modules/user/decorators/user.decorator';
 import { ImportCustomerDto } from './dto/ImportCustomer.dto';
 import { GetCustomerDto } from './dto/GetCustomer.dto';
-import { FindCustomerDto } from './dto/FindCustomer.dto';
 import { ValidationPipe } from 'src/shared/pipes/validation.pipe';
 import JwtAuthenticationGuard from 'src/shared/guards/jwtAuthenticationGuard';
 
@@ -37,12 +36,6 @@ export class CustomerController {
   @UsePipes(new ValidationPipe())
   deleteCustomer(@Param('id', ParseIntPipe) id: number, @User('storeId') storeId: number) {
     return this.customerService.deleteCustomer(storeId, id);
-  }
-
-  @Get('/find')
-  @UsePipes(new ValidationPipe())
-  findCustomers(@Query() _findCustomer: FindCustomerDto, @User('storeId') storeId: number) {
-    return this.customerService.findCustomers(_findCustomer, storeId)
   }
 
   @Get('/customer/:id')

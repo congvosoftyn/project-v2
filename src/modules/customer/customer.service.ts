@@ -1,7 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CustomerEntity } from 'src/entities/Customer.entity';
 import { CreateCustomerDto, } from './dto/create-customer.dto';
-import { FindCustomerDto } from './dto/FindCustomer.dto';
 import { GetCustomerDto } from './dto/GetCustomer.dto';
 import { StoreEntity } from 'src/entities/Store.entity';
 import { ConstactUsDto } from './dto/ContactUs.dto';
@@ -40,79 +39,70 @@ export class CustomerService {
       .execute();
   }
 
-  async importCustomerConcept(body: ImportCustomerDto, companyId: number) {
-    let customers = body.customer.map((customer) => ({ ...customer, countryCode: customer.countryCode ? customer.countryCode : "+1" }));
+  async importCustomerConcept(body: ImportCustomerDto, storeId: number) {
+    // let customers = body.customers.map((customer) => ({ ...customer, countryCode: customer.countryCode ? customer.countryCode : "+1" }));
+    let store = await StoreEntity.findOne({ where: { id: storeId } });
+
+    let customers = body.customers;
+
     let phoneNumbers = [];
-    let countryCodes = [];
 
-    customers.map((customer) => {
-      phoneNumbers.push(customer.phoneNumber);
-      countryCodes.push(customer.countryCode);
-    });
+    for (const customer of customers) {
+      let phoneNumber = `${customer.countryCode}${customer.phoneNumber}`;
+      phoneNumbers.push(phoneNumber);
+    }
 
-    let customersExist = await CustomerEntity.createQueryBuilder('customer')
-      .leftJoin("customer.companyCustomer", "companyCustomer")
-      .select([
-        "customer.id", "customer.countryCode", "customer.email", "customer.phoneNumber",
-        "customer.firstName", "customer.lastName", "companyCustomer.id",
-        "companyCustomer.companyId", "companyCustomer.customerId"
-      ])
-      .where("customer.phoneNumber in (:phoneNumbers)", { phoneNumbers: phoneNumbers })
-      .andWhere("customer.countryCode in (:countryCodes)", { countryCodes })
-      .andWhere("companyCustomer.companyId = :companyId", { companyId })
-      .getMany();
+    let customersExist = await CustomerEntity.createQueryBuilder("cus")
+      .where("CONCAT(cus.countryCode,'',cus.phoneNumber) in (:phoneNumbers)", { phoneNumbers })
+      .getMany()
 
-    let bodyCustomerExistUpdate = [];
-    let bodyCustomerNew = [];
+    let newCustomers = [];
+    let updateCustomers = [];
 
-    customers.forEach((customer) => {
-      let check = customersExist.findIndex(cusE => cusE.phoneNumber === customer.phoneNumber && cusE.countryCode === customer.countryCode);
-      if (check !== -1) {
-        bodyCustomerExistUpdate.push(<CustomerEntity>customer)
+    for (const customer of customers) {
+      let checkCustomer = await customersExist.find((cus) => cus.phoneNumber === customer.phoneNumber && cus.countryCode === customer.countryCode);
+      if (checkCustomer) {
+        let updateCustomer = {
+          ...checkCustomer,
+          phoneNumber: customer.phoneNumber,
+          countryCode: customer.countryCode,
+          isoCode: customer.isoCode,
+          email: customer.email,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          dob: customer.dob,
+          gender: customer.gender,
+          avatar: customer.avatar,
+          description: customer.description,
+          storeId
+        }
+        updateCustomers.push(updateCustomer);
+
       } else {
-        bodyCustomerNew.push(<CustomerEntity>customer)
+        newCustomers.push(<CustomerEntity>{
+          phoneNumber: customer.phoneNumber,
+          countryCode: customer.countryCode,
+          isoCode: customer.isoCode,
+          email: customer.email,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          dob: customer.dob,
+          gender: customer.gender,
+          avatar: customer.avatar,
+          description: customer.description,
+          storeId
+        })
       }
-    })
-
-    let customersUpdate = [];
-
-    bodyCustomerExistUpdate.forEach((customer) => {
-      let _customer = customersExist.find((cus) => cus.phoneNumber === customer.phoneNumber && cus.countryCode === customer.countryCode) as CustomerEntity;
-      if (_customer) {
-        let _cus = { ..._customer, firstName: customer.firstName, lastName: customer.lastName, email: customer.email };
-        customersUpdate.push(_cus)
-      }
-    })
-
-    CustomerEntity.save(customersUpdate);
-    CustomerEntity.save(bodyCustomerNew);
-
-    return { status: "OK" }
-  }
-
-  async findCustomers(_findCustomer: FindCustomerDto, companyId: number) {
-    const skip: number = _findCustomer.pageNumber ? +_findCustomer.pageNumber : 0;
-    const take: number = _findCustomer.pageSize ? +_findCustomer.pageSize : 10;
-    const sortField: string = _findCustomer.sortField ? _findCustomer.sortField : '';
-    const sortOrder = _findCustomer.sortOrder == 'asc' ? 'ASC' : 'DESC';
-    const search: string = _findCustomer.filter ? _findCustomer.filter : '';
-
-    let rootQuery = CustomerEntity
-      .createQueryBuilder('customer')
-      .leftJoin("customer.companyCustomer", "com_customer")
-      .where("com_customer.companyId = :companyId", { companyId })
-    if (search) {
-      rootQuery = rootQuery.andWhere(`(CONCAT(customer.firstName, ' ', customer.lastName) LIKE :keywork OR phoneNumber LIKE :keywork)`, { keywork: `%${search}%` })
     }
 
-    const total = await rootQuery.getCount();
-    const query = rootQuery.skip(skip).take(take);
-
-    if (sortField && sortField != 'null') {
-      query.orderBy("customer." + sortField, sortOrder)
+    try {
+      CustomerEntity.save(newCustomers);
+      CustomerEntity.save(updateCustomers);
+      return "Success!";
+    } catch (error) {
+      console.error("error => ",error);
+      throw new BadRequestException("Import no success!")
     }
-    const customers = await query.getMany();
-    return { items: customers, totalCount: total };
   }
 
   async getCustomers(_getCustomer: GetCustomerDto, storeId: number) {
