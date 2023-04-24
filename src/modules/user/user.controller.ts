@@ -1,10 +1,8 @@
 import { Body, Controller, Delete, Get, Headers, HttpStatus, Param, ParseIntPipe, Post, Put, Query, Req, Res, UseGuards, UsePipes, } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { UserEntity } from 'src/entities/User.entity';
 import { CreateUserDto } from './dto/createUser.dto';
 import { UserService } from './user.service';
 import { PostDataDto } from './dto/PostData.dto';
-import { VerifyEmailDto } from './dto/VerifyEmail.dto';
 import { User } from './decorators/user.decorator';
 import { ValidationPipe } from 'src/shared/pipes/validation.pipe';
 import { FirebaseAuthDto } from './dto/firebase-auth.dto';
@@ -20,9 +18,49 @@ import { toAbsoluteUrl } from 'src/shared/utils/util';
 export class UserController {
   constructor(private userService: UserService) { }
 
+  @Post('register')
+  @UsePipes(new ValidationPipe())
+  async createUser(@Body() _user: CreateUserDto) {
+    return this.userService.signup(_user);
+  }
+
   @Post('login')
   async login(@Body() body: LoginDto) {
-    return this.userService.login(body);
+    return this.userService.signin(body);
+  }
+
+  @Get('logout')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthenticationGuard)
+  logout(@Query() { refreshToken, deviceToken }: QueryLogoutDto, @User('userId') userId: number) {
+    return this.userService.logout(refreshToken, userId, deviceToken);
+  }
+
+  @Post('refreshToken')
+  @UsePipes(new ValidationPipe())
+  refreshToken(@Body() _postData: PostDataDto) {
+    return this.userService.refreshToken(_postData);
+  }
+
+  @Get('user/:userId')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthenticationGuard)
+  async getUserByID(@Param('userId') userId: number) {
+    return this.userService.findOneUser(userId);
+  }
+
+  @Put('update/:userId')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthenticationGuard)
+  async updateUser(@Body() user: CreateUserDto, @Param("userId") userId: number) {
+    return this.userService.updateUser(user, userId);
+  }
+
+  @Delete(':userId')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthenticationGuard)
+  async deleteUser(@Param('userId', ParseIntPipe) userId: number) {
+    return this.userService.deleteUser(userId);
   }
 
   @Post('fblogin')
@@ -40,69 +78,6 @@ export class UserController {
     return this.userService.socialLogin(body, { idToken, isApple: true });
   }
 
-  @Get('logout')
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthenticationGuard)
-  logout(@Query() { refreshToken, deviceToken }: QueryLogoutDto, @User('userId') userId: number) {
-    return this.userService.logout(refreshToken, userId, deviceToken);
-  }
-
-  @Post('refreshToken')
-  @UsePipes(new ValidationPipe())
-  refreshToken(@Body() _postData: PostDataDto) {
-    return this.userService.refreshToken(_postData);
-  }
-
-  @Get('user/:UserId')
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthenticationGuard)
-  async getUserByID(@Param('UserId') UserId: number) {
-    return this.userService.getUserByID(UserId);
-  }
-
-  @Get('me')
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthenticationGuard)
-  async myUser(@User('userId') userId: number) {
-    return this.userService.myUser(userId);
-  }
-
-  @Get('code-again')
-  async sendVerifyEmailAgain(@Param('email') email: string) {
-    return this.userService.sendVerifyEmailAgain(email);
-  }
-
-  @Post('register')
-  @UsePipes(new ValidationPipe())
-  async createUser(@Body() _user: CreateUserDto) {
-    return this.userService.createUser(_user);
-  }
-
-  @Post('verify')
-  @UsePipes(new ValidationPipe())
-  async verifyEmail(@Body() { code, email }: VerifyEmailDto) {
-    return await this.userService.verifyEmail(code, email);
-  }
-
-  @Put('update')
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthenticationGuard)
-  async updateUser(@Body() user: UserEntity, @User('companyId') companyId: number,) {
-    return this.userService.updateUser(user, companyId);
-  }
-
-  @Delete(':userId')
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthenticationGuard)
-  async deleteUser(@Param('userId', ParseIntPipe) userId: number) {
-    return this.userService.deleteUser(userId);
-  }
-
-  @Get("/suggest-business-type")
-  getSuggessBusinessType() {
-    return BusinessType
-  }
-
   @Post('/facebook/deletion')
   parseSignedRequest(@Req() request: Request, @Res() response: Response) {
     const confirmationCode = this.userService.getConfirmationCode();
@@ -115,5 +90,10 @@ export class UserController {
   @Get('/facebook/deletion-status')
   deletionStatus(@Res() response: Response, @Query('code') code: number) {
     return response.status(HttpStatus.OK).json({ code });
+  }
+
+  @Get("/suggest-business-type")
+  getSuggessBusinessType() {
+    return BusinessType
   }
 }

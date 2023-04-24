@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, BaseEntity, Unique } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, BaseEntity, Unique, OneToMany } from 'typeorm';
 import crypto = require('crypto');
 import { Length, IsEmail } from 'class-validator';
+import { StoreEntity } from './Store.entity';
 
 @Entity('user')
 @Unique(['email'])
@@ -53,4 +54,7 @@ export class UserEntity extends BaseEntity {
 
   @Column()
   phoneNumber: string;
+
+  @OneToMany(()=>StoreEntity,store=>store.user,{onDelete:"CASCADE",onUpdate:"CASCADE"})
+  store: StoreEntity;
 }

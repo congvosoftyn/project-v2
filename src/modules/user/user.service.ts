@@ -1,4 +1,4 @@
-import { BadRequestException, forwardRef, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException, } from '@nestjs/common';
+import { BadRequestException, forwardRef, HttpException, HttpStatus, Inject, Injectable, NotFoundException, UnauthorizedException, } from '@nestjs/common';
 import { LIFE_SECRET, REFRESH_TOKEN_LIFE_EXPIRES, REFRESH_TOKEN_SECRET, SECRET, TOKEN_LIFE_EXPIRES, } from 'src/config';
 import { OpenHourEntity } from 'src/entities/OpenHour.entity';
 import { StoreEntity } from 'src/entities/Store.entity';
@@ -8,11 +8,8 @@ import { TokenData } from 'src/shared/interfaces/TokenData.interface';
 import { EmailService } from '../email/email.service';
 import { CreateUserDto } from './dto/createUser.dto';
 import * as jwt from 'jsonwebtoken';
-import { Response } from 'express';
 import { RedisCacheService } from '../cache/redisCache.service';
 import { PostDataDto } from './dto/PostData.dto';
-import { ChangePasswordDto } from './dto/ChangePassword.dto';
-import { UpdateMyUserDto } from './dto/UpdateMyUser.dto';
 import { UserGateway } from './user.gateway';
 import { validate } from 'class-validator';
 import { FirebaseAuthDto } from './dto/firebase-auth.dto';
@@ -36,10 +33,10 @@ export class UserService {
   ) { }
 
 
-  async createUser(_user: CreateUserDto) {
+  async signup(_user: CreateUserDto) {
     const { email, password, store, fullName, phoneNumber } = _user;
 
-    const findUser = await UserEntity.findOneBy({ email: email });
+    const findUser = await UserEntity.findOne({ where: { email } });
     if (findUser) {
       throw new HttpException('User already existed!!', HttpStatus.CONFLICT);
     }
@@ -47,6 +44,8 @@ export class UserService {
     let user = UserEntity.create(<UserEntity>{
       fullName, email, password, phoneNumber
     });
+    user.hashPassword();
+
     user = await user.save();
 
     let newStore = StoreEntity.create(<StoreEntity>{
@@ -81,19 +80,53 @@ export class UserService {
     const appSetting = new SettingEntity();
     appSetting.store = newStore;
     SettingEntity.save(<SettingEntity>appSetting);
-    const token = await this.createToken(user, newStore.id);
-    const resonpose = { userInfo: user, accessToken: token };
-    return resonpose;
+    return this.createToken(user, newStore.id);
+  }
+
+  async signin(body: LoginDto) {
+    const { email, password } = body;
+    let user = await UserEntity.createQueryBuilder('user')
+      .leftJoinAndSelect('user.store', 'store')
+      .addSelect('user.password')
+      .where('user.email = :email', { email })
+      .getOne()
+
+
+    if (!user) throw new HttpException('Account suppended', HttpStatus.SERVICE_UNAVAILABLE,);
+
+    if (!user.isActive) throw new HttpException("Account does not exist!", HttpStatus.BAD_REQUEST)
+
+    if (!user.checkIfUnencryptedPasswordIsValid(password)) {
+      throw new HttpException('Wrong credentials provided', HttpStatus.FORBIDDEN,);
+    }
+
+    const tokenData = await this.createToken(user);
+    this.cache.set(tokenData.refreshToken, tokenData.token);
+
+    if (body?.deviceToken) {
+      let topic = body.email.replace(/[^\w\s]/gi, '')
+      let result = await this.notifyService.subscribeNotiTopic(topic, body.deviceToken)
+      if (result.successCount == 1) {
+        UserEntity.createQueryBuilder().update({ topicNoti: topic }).where("email = :email", { email }).execute()
+      }
+    }
+
+    return tokenData;
+  }
+
+  async logout(refreshToken: string, userId: number, deviceToken?: string) {
+    if (refreshToken) this.cache.delete(refreshToken);
+    const user = await this.findOneUser(userId);
+    let topic = user.email.replace(/[^\w\s]/gi, '')
+    this.notifyService.unSubscriptionNotiTopic(topic, deviceToken);
+    return { success: true };
   }
 
   async createToken(user: UserEntity, storeId?: number) {
-    let store = await StoreEntity.createQueryBuilder('store').where("store.companyId = :id", { id: user.id }).getOne();
+    let store = await StoreEntity.createQueryBuilder('store').where("store.userId = :id", { id: user.id }).getOne();
     let _storeId = storeId ? storeId : store.id;
 
-    const dataStoredInToken: DataStoredInToken = {
-      userId: user.id,
-      storeId: _storeId,
-    };
+    const dataStoredInToken: DataStoredInToken = { userId: user.id, storeId: _storeId, };
 
     const response: TokenData = {
       expiresIn: TOKEN_LIFE_EXPIRES,
@@ -104,46 +137,6 @@ export class UserService {
     return response;
   }
 
-  async login(body: LoginDto) {
-    const { email, password } = body;
-    if (!(email && password)) throw new HttpException('Wrong credentials provided', HttpStatus.FORBIDDEN,);
-
-    let user = await UserEntity.createQueryBuilder('user')
-      .leftJoinAndSelect('user.company', 'company')
-      .addSelect('user.password')
-      .where('user.email = :email', { email })
-      .getOne()
-
-    if (!user) throw new HttpException('Account suppended', HttpStatus.SERVICE_UNAVAILABLE,);
-
-    if (!user.isActive) throw new HttpException("Account does not exist!", HttpStatus.BAD_REQUEST)
-
-    if (user.checkIfUnencryptedPasswordIsValid(password)) {
-      const tokenData = await this.createToken(user);
-      this.cache.set(tokenData.refreshToken, tokenData.token);
-      const response = { id: user.id, accessToken: tokenData };
-
-      if (body?.deviceToken) {
-        let topic = body.email.replace(/[^\w\s]/gi, '')
-        let result = await this.notifyService.subscribeNotiTopic(topic, body.deviceToken)
-        if (result.successCount == 1) {
-          UserEntity.createQueryBuilder().update({ topicNoti: topic }).where("email = :email", { email }).execute()
-        }
-      }
-
-      return response;
-    } else {
-      throw new HttpException('Wrong credentials provided', HttpStatus.FORBIDDEN,);
-    }
-  }
-
-  async logout(refreshToken: string, userId: number, deviceToken?: string) {
-    if (refreshToken) this.cache.delete(refreshToken);
-    const user = await this.getUserByID(userId);
-    let topic = user.email.replace(/[^\w\s]/gi, '')
-    this.notifyService.unSubscriptionNotiTopic(topic, deviceToken);
-    return { success: true };
-  }
 
   async refreshToken(_postData: PostDataDto) {
     const token = await this.cache.get(_postData.refreshToken);
@@ -169,107 +162,31 @@ export class UserService {
     }
   }
 
-  async getUserByID(userId: number) {
-    const user = await UserEntity.createQueryBuilder('user').where("user.id = :userId", { userId }).getOne();
-    if (!user) throw new HttpException(`User with id ${userId} not found`, HttpStatus.NOT_FOUND,);
+  async findOneUser(id: number): Promise<UserEntity> {
+    let user = await UserEntity.createQueryBuilder('user').where("user.id = :id", { id }).getOne();
+    if (!user || !user.isActive) throw new NotFoundException("Not found user!");
     return user;
   }
 
-  async changePassword(body: ChangePasswordDto, id: number, res: Response,) {
-    let user: UserEntity;
-    try {
-      user = await UserEntity.findOneOrFail({ where: { id: id } });
-    } catch (error) {
-      throw new UnauthorizedException();
-    }
-
-   
-    //Validate de model (password lenght)
-    user.password = body.newPassword;
-    const errors = await validate(user);
-    if (errors.length > 0) {
-      throw new HttpException(errors, HttpStatus.BAD_REQUEST);
-    }
-
-    UserEntity.save(user);
-
-    return res.status(HttpStatus.NO_CONTENT).send();
-  }
-
-  myUser(id: number) {
-    return UserEntity.createQueryBuilder('user').leftJoinAndSelect("user.company", "company").where("user.id = :id", { id }).getOne()
-  }
-
-  async updateMyUser(profile: UpdateMyUserDto) {
-    if (profile.oldPassword && profile.newPassword) {
-      const user = await UserEntity.createQueryBuilder('user').addSelect("user.password").where("user.id = :id", { id: profile.id }).getOne();
-      //Check if old password matchs
-      if (!user.checkIfUnencryptedPasswordIsValid(profile.oldPassword)) {
-        throw new HttpException('Password incorrect!', HttpStatus.FORBIDDEN);
-      }
-      user.password = profile.newPassword;
-      user.hashPassword();
-      UserEntity.save(user);
-    }
-    profile.oldPassword = undefined;
-    profile.newPassword = undefined;
-
-    let myProfile = profile as UserEntity
-
-    await UserEntity.createQueryBuilder().update(myProfile).where('id = :id', { id: profile.id }).execute();
-    return this.getUserByID(profile.id);
-  }
-
-  verifyEmail(code: string, email: string) {
-    return UserEntity.findOneBy({ email: email });
-  }
-
   deleteUser(userId: number) {
-    // UserEntity.delete(userId);
     UserEntity.createQueryBuilder().update({ isActive: false }).where("id = :userId", { userId }).execute();
     return { message: 'delete' };
   }
 
-  async sendVerifyEmailAgain(email: string) {
-    const user = await UserEntity.findOne({ where: { email: email }, relations: ['company'] });
 
-    return { message: 'sent' };
-  }
-
-  async updateUser(user: UserEntity, companyId: number) {
-    //new user
-    if (!user.id) {
-      const result = await UserEntity.findOne({ where: { email: user.email }, });
-      if (result)
-        throw new HttpException('User already existed', HttpStatus.CONFLICT);
-
-      if (user.password) {
-        user.hashPassword();
-      } else {
-        let randomstring = '';
-        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz';
-        const string_length = 8;
-        for (let i = 0; i < string_length; i++) {
-          const rnum = Math.floor(Math.random() * chars.length);
-          randomstring += chars.substring(rnum, rnum + 1);
-        }
-        user.password = randomstring;
-        const nextDate = new Date();
-        //Send email with password
-        this.emailService.sendNewUserPassword(user.email, user.fullName ? user.fullName : '', randomstring,);
-        nextDate.setTime(new Date().getTime() + 1000 * 24 * 3600);
-      }
-
-      await UserEntity.save(user);
-    } else {
-      if (user.password.length < 128) {
-        const newUser = new UserEntity();
-        newUser.password = user.password;
-      }
-
-      UserEntity.save(user);
+  async updateUser(bodyUpdateUser: CreateUserDto, userId: number) {
+    let user = await this.findOneUser(userId);
+    let userUpdate = {
+      ...user,
+      id: userId,
+      fullName: bodyUpdateUser.fullName,
+      email: bodyUpdateUser.email,
+      password: bodyUpdateUser.password,
+      image: bodyUpdateUser.image,
+      topicNoti: bodyUpdateUser.topicNoti,
+      phoneNumber: bodyUpdateUser.phoneNumber,
     }
-    return this.myUser(user.id);
+    return UserEntity.save(<UserEntity>userUpdate);
   }
 
   async socialLogin(body: FirebaseAuthDto, type: { idToken: string; isFacebook?: boolean; isGoogle?: boolean; isApple?: boolean }) {
@@ -283,7 +200,7 @@ export class UserService {
     if (!_user) {
       const idToken = type.idToken.replace('Bearer ', '');
       const decodedToken = await getAuth().verifyIdToken(idToken);
-      return this.create(
+      return this.createSocialLogin(
         {
           email: bodyEmail,
           password: body.uid,
@@ -338,12 +255,16 @@ export class UserService {
   findOne(email: string): Promise<UserEntity> {
     return UserEntity.createQueryBuilder('user')
       .select(['user.fullName', 'user.id', 'user.image', 'user.email', 'user.isActive',])
-      .leftJoinAndSelect('user.company', 'company')
+      .leftJoinAndSelect('user.store', 'store')
       .where('user.email = :email', { email })
       .getOne();
   }
 
-  async create(dto: CreateUserDTO, socialSignup?: { isFacebook?: boolean; isGoogle?: boolean; isApple?: boolean; isEmailVerify?: boolean; image?: string; decodedToken?: string; },) {
+  async createSocialLogin(dto: CreateUserDTO, socialSignup?: {
+    isFacebook?: boolean; isGoogle?: boolean;
+    isApple?: boolean; isEmailVerify?: boolean;
+    image?: string; decodedToken?: string;
+  }) {
     // check uniqueness of phone/email
     const { email } = dto;
     const qb = UserEntity.createQueryBuilder('user').where('user.email = :email', { email });
@@ -372,7 +293,8 @@ export class UserService {
       const _errors = { username: 'User input is not valid.' };
       throw new HttpException({ message: 'Input data validation failed', _errors }, HttpStatus.BAD_REQUEST,);
     } else {
-      const savedUser = await UserEntity.save(newUser);
+      UserEntity.save(newUser);
+
       if (dto?.deviceToken) {
         let topic = dto.email.replace(/[^\w\s]/gi, '')
         let result = await this.notifyService.subscribeNotiTopic(topic, dto.deviceToken)
