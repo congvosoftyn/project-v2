@@ -1,4 +1,4 @@
-import { CreateStoreDto } from "./createUser.dto";
+import { CreateStoreDto } from "src/modules/store/dto/create-store.dto";
 
 export class CreateUserDTO {
     name: string;

@@ -1,7 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, BaseEntity, Column, ManyToOne, JoinColumn } from "typeorm";
 import { StoreEntity } from "./Store.entity";
 
-
 @Entity({ name: 'open_hour', orderBy: { day: "ASC" } })
 export class OpenHourEntity extends BaseEntity {
     @PrimaryGeneratedColumn()

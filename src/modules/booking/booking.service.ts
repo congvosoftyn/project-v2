@@ -1,15 +1,15 @@
 import { UserEntity } from 'src/entities/User.entity';
 import { CancelBookingDto, UpdateBookingDto } from './dto/update-booking.dto';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { AppointmentBookingEntity } from 'src/entities/Booking.entity';
 import { StaffEntity } from 'src/entities/Staff.entity';
-import { StaffTimeOffEntity } from 'src/entities/TimeOff.entity';
 import { EmailService } from 'src/modules/email/email.service';
 import { BookingGateway } from './booking.gateway';
 import { QueryHistoryByDateDto } from './dto/QueryHistoryByDate.dto';
 import { CreateAppointmentDto } from './dto/create-booking.dto';
-import { AppointmentInfoEntity } from 'src/entities/BookingDetail.entity';
 import { NotifyService } from 'src/modules/notify/notify.service';
+import { BookingEntity } from 'src/entities/Booking.entity';
+import { BookingDetailEntity } from 'src/entities/BookingDetail.entity';
+import { TimeOffEntity } from 'src/entities/TimeOff.entity';
 
 @Injectable()
 export class BookingService {
@@ -23,7 +23,7 @@ export class BookingService {
     async getHistoryStatus(_query: QueryHistoryByDateDto, storeId: number) {
         const { start, end, staffId } = _query;
 
-        let query = AppointmentBookingEntity
+        let query = BookingEntity
             .createQueryBuilder('booking')
             .leftJoin('booking.service', 'service', 'service.isService = true')
             .select("date_format(booking.date,'%Y-%m-%d')", "created")
@@ -43,7 +43,7 @@ export class BookingService {
     }
 
     async getAppointments(storeId: number, companyId: number) {
-        let bookings = await AppointmentBookingEntity.createQueryBuilder('booking')
+        let bookings = await BookingEntity.createQueryBuilder('booking')
             .leftJoinAndSelect('booking.customer', 'customer')
             .leftJoin('customer.companyCustomer', 'companyCustomer', 'companyCustomer.companyId = :companyId', { companyId })
             .leftJoinAndSelect('booking.bookingInfo', 'bookingInfo')
@@ -80,7 +80,7 @@ export class BookingService {
 
         booking.lastDate = booking.date;
 
-        const newbooking = await AppointmentBookingEntity.save(booking as AppointmentBookingEntity);
+        const newbooking = await BookingEntity.save(booking as BookingEntity);
 
         let _services = []
         let _packages = []
@@ -102,14 +102,14 @@ export class BookingService {
             });
         }
 
-        await AppointmentInfoEntity.save(_services as unknown as AppointmentInfoEntity)
-        await AppointmentInfoEntity.save(_packages as unknown as AppointmentInfoEntity)
+        await BookingDetailEntity.save(_services as unknown as BookingDetailEntity)
+        await BookingDetailEntity.save(_packages as unknown as BookingDetailEntity)
 
         return await this.findByBooking(newbooking.id)
     }
 
     async findByBooking(id: number) {
-        const booking = await AppointmentBookingEntity.createQueryBuilder('booking')
+        const booking = await BookingEntity.createQueryBuilder('booking')
             .leftJoinAndSelect("booking.bookingInfo", "bookingInfo")
             .leftJoinAndSelect("bookingInfo.service", "service", "service.isService = true")
             .leftJoinAndSelect("service.tax", "tax")
@@ -125,7 +125,7 @@ export class BookingService {
         return this.convertReponseBooking(booking)
     }
 
-    convertReponseBooking(booking: AppointmentBookingEntity) {
+    convertReponseBooking(booking: BookingEntity) {
         let services = []
         let packages = []
 
@@ -185,7 +185,7 @@ export class BookingService {
     }
 
     getHistoryByCustomer(id: number, storeId: number) {
-        return AppointmentBookingEntity.find({ where: { storeId, customerId: id }, order: { date: 'DESC' } })
+        return BookingEntity.find({ where: { storeId, customerId: id }})
     }
 
     async updateAppointment(bookingId: number, booking: UpdateBookingDto, userId: number) {
@@ -212,14 +212,14 @@ export class BookingService {
 
         for (const service of services) {
             if (!service.bookingInfoId) {
-                _services.push(<AppointmentInfoEntity>{
+                _services.push(<BookingDetailEntity>{
                     bookingId: bookingId,
                     price: parseFloat(service.price.toString()),
                     staffId: service.staffId,
                     serviceId: service.id
                 })
             } else {
-                _existedServices.push(<AppointmentInfoEntity>{
+                _existedServices.push(<BookingDetailEntity>{
                     id: service.bookingInfoId,
                     bookingId: bookingId,
                     price: parseFloat(service.price.toString()),
@@ -228,19 +228,19 @@ export class BookingService {
                 })
             }
         }
-        AppointmentInfoEntity.save(_existedServices);
-        AppointmentInfoEntity.save(_services);
+        BookingDetailEntity.save(_existedServices);
+        BookingDetailEntity.save(_services);
 
         for (const _package of packages) {
             if (!_package.bookingInfoId) {
-                _packages.push(<AppointmentInfoEntity>{
+                _packages.push(<BookingDetailEntity>{
                     bookingId: bookingId,
                     price: _package.price,
                     staffId: _package.staffId,
                     packageId: _package.id
                 })
             } else {
-                _existedPackages.push(<AppointmentInfoEntity>{
+                _existedPackages.push(<BookingDetailEntity>{
                     id: _package.bookingInfoId,
                     bookingId: bookingId,
                     price: _package.price,
@@ -249,17 +249,17 @@ export class BookingService {
                 })
             }
         }
-        AppointmentInfoEntity.save(_existedPackages);
-        AppointmentInfoEntity.save(_packages);
+        BookingDetailEntity.save(_existedPackages);
+        BookingDetailEntity.save(_packages);
 
         if (bDeletedInfoIds.length > 0) {
-            AppointmentInfoEntity.createQueryBuilder().update({ deleted: true }).where("id IN (:ids)", { ids: bDeletedInfoIds }).execute()
+            BookingDetailEntity.createQueryBuilder().update({ deleted: true }).where("id IN (:ids)", { ids: bDeletedInfoIds }).execute()
         }
 
         booking.services = undefined;
         booking.packages = undefined;
 
-        await AppointmentBookingEntity.createQueryBuilder().update(booking).where("id = :id", { id: bookingId }).execute()
+        await BookingEntity.createQueryBuilder().update(booking).where("id = :id", { id: bookingId }).execute()
         const user = await this.getUser(userId)
         let topic = user.email.replace(/[^\w\s]/gi, '')
         this.notifyService.sendhNotiTopic(topic, `Booking is updated!`)
@@ -268,7 +268,7 @@ export class BookingService {
     }
 
     async cancelAppointment(id: number, booking: CancelBookingDto, userId: number) {
-        const result = await AppointmentBookingEntity.createQueryBuilder().update({ status: booking.status, reason: booking.reason }).where("id = :id ", { id }).execute();
+        const result = await BookingEntity.createQueryBuilder().update({ status: booking.status, reason: booking.reason }).where("id = :id ", { id }).execute();
         const user = await this.getUser(userId)
         let topic = user.email.replace(/[^\w\s]/gi, '')
         this.notifyService.sendhNotiTopic(topic, `Booking is ${booking.status}!`)
@@ -276,14 +276,14 @@ export class BookingService {
     }
 
     async deleteAppointment(id: number, storeId: number, userId: number) {
-        const deleteB = await AppointmentBookingEntity.findOneBy({ id });
+        const deleteB = await BookingEntity.findOneBy({ id });
         if (deleteB.isActive === false) return deleteB;
 
         const user = await this.getUser(userId)
         let topic = user.email.replace(/[^\w\s]/gi, '')
         this.notifyService.sendhNotiTopic(topic, 'Booking is deleted!')
 
-        return AppointmentBookingEntity.createQueryBuilder().update({ isActive: false }).where("id = :id and storeId = :storeId", { id, storeId }).execute();
+        return BookingEntity.createQueryBuilder().update({ isActive: false }).where("id = :id and storeId = :storeId", { id, storeId }).execute();
     }
 
 
@@ -301,7 +301,7 @@ export class BookingService {
     //     const endDate = new Date(startDate);
     //     endDate.setDate(endDate.getDate() + 1);
     //     let slots: { time: Date, open: boolean }[] = this.getAllSlots(startDate, endDate, bookingSetting.appointmentSlots);
-    //     const booking = await AppointmentBookingEntity.createQueryBuilder('booking')
+    //     const booking = await BookingEntity.createQueryBuilder('booking')
     //         .leftJoinAndSelect('booking.service', 'service')
     //         .where('booking.storeId = :storeId', { storeId: staff.storeId })
     //         .andWhere('booking.isActive = true')
@@ -363,7 +363,7 @@ export class BookingService {
 
     //     let today = new Date();
     //     let available: { time: Date, open: boolean }[] = this.getAllSlots(workingStart, workingEnd, bookingSetting.bookingSlotSize);
-    //     let booking = await AppointmentBookingEntity.createQueryBuilder('booking')
+    //     let booking = await BookingEntity.createQueryBuilder('booking')
     //         .leftJoinAndSelect('booking.service', 'service')
     //         .where('booking.storeId = :storeId', { storeId: staff.storeId })
     //         .andWhere('booking.isActive = true')
@@ -399,7 +399,7 @@ export class BookingService {
 
 
 
-    checkIfDayOff(timeOffs: StaffTimeOffEntity[], pickedDate: Date) {
+    checkIfDayOff(timeOffs: TimeOffEntity[], pickedDate: Date) {
 
         for (let i = 0; i < timeOffs.length; i++) {
             //check timeoff

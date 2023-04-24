@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { OpenHourEntity } from 'src/entities/OpenHour.entity';
 import { StaffEntity } from 'src/entities/Staff.entity';
-import { StaffTimeOffEntity } from 'src/entities/TimeOff.entity';
+import { TimeOffEntity } from 'src/entities/TimeOff.entity';
 import { BookingInfo } from './dto/data-convert.dto';
 import { QueryBookingByStaffDto } from './dto/query-booking-staff.dto';
 import { QueryStaffServices } from './dto/query-staff-services.dto';
@@ -169,7 +169,7 @@ export class StaffService {
     if (query.staffId === 'working') {
       query_staff = query_staff
         .andWhere(`workingHours.day = ${new Date().getDay()} 
-        and staff.id not in (${StaffTimeOffEntity.createQueryBuilder('time_off').select("time_off.staffId")
+        and staff.id not in (${TimeOffEntity.createQueryBuilder('time_off').select("time_off.staffId")
             .where(`DATE(time_off.endDate) = ${query.date}`).andWhere("HOUR(TIMEDIFF(time_off.endDate, time_off.startDate))-8 >= 0")
             .groupBy("time_off.staffId").getSql()})
           `)

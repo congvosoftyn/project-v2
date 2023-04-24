@@ -1,6 +1,6 @@
 import { BaseEntity, Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn, } from 'typeorm';
 import { ProductEntity } from './Product.entity';
-import { StaffTimeOffEntity } from './TimeOff.entity';
+import { TimeOffEntity } from './TimeOff.entity';
 import { WorkingHourEntity } from './WorkingHour.entity';
 import { StoreEntity } from './Store.entity';
 
@@ -34,8 +34,8 @@ export class StaffEntity extends BaseEntity {
   @Column({ default: 15 })
   breakTime: number;
 
-  @OneToMany((type) => StaffTimeOffEntity, (hour) => hour.staff, { eager: true, cascade: true, })
-  timeOffs: StaffTimeOffEntity[];
+  @OneToMany((type) => TimeOffEntity, (hour) => hour.staff, { eager: true, cascade: true, })
+  timeOffs: TimeOffEntity[];
 
   @ManyToOne((type) => StoreEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'storeId' })

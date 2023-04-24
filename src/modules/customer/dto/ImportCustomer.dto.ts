@@ -1,5 +1,5 @@
-import { CustomerDto } from "./create-customer.dto";
+import { CreateCustomerDto } from "./create-customer.dto";
 
 export class ImportCustomerDto {
-    customer: CustomerDto[];
+    customer: CreateCustomerDto[];
 }

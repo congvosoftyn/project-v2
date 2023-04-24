@@ -1,5 +1,5 @@
-import { AppointmentBookingEntity } from "src/entities/Booking.entity";
-import { PackageCategoryEntity } from "src/entities/Package.entity";
+import { BookingEntity } from "src/entities/Booking.entity";
+import { PackageEntity } from "src/entities/Package.entity";
 import { ProductEntity } from "src/entities/Product.entity";
 
 export class BookingInfo {
@@ -13,6 +13,6 @@ export class BookingInfo {
     created_at: Date;
     updated_at: Date;
     service: ProductEntity;
-    packages: PackageCategoryEntity;
-    booking: AppointmentBookingEntity;
+    packages: PackageEntity;
+    booking: BookingEntity;
 }

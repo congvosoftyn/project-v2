@@ -1,12 +1,10 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Put, Query, UseGuards, UsePipes } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { AppointmentBookingEntity } from 'src/entities/Booking.entity';
 import { User } from 'src/modules/user/decorators/user.decorator';
 import JwtAuthenticationGuard from 'src/shared/guards/jwtAuthenticationGuard';
 import { ValidationPipe } from 'src/shared/pipes/validation.pipe';
 import { BookingService } from './booking.service';
 import { CreateAppointmentDto } from './dto/create-booking.dto';
-import { QueryBookingSlotsDto } from './dto/QueryBookingSlots.dto';
 import { QueryHistoryByDateDto } from './dto/QueryHistoryByDate.dto';
 import { CancelBookingDto, UpdateBookingDto } from './dto/update-booking.dto';
 

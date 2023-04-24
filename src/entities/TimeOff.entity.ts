@@ -1,9 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, BaseEntity, Column, ManyToOne, JoinColumn } from "typeorm";
 import { StaffEntity } from "./Staff.entity";
 
-
-@Entity({ name: 'staff_time_off', orderBy: { startDate: 'ASC' } })
-export class StaffTimeOffEntity extends BaseEntity {
+@Entity({ name: 'time_off', orderBy: { startDate: 'ASC' } })
+export class TimeOffEntity extends BaseEntity {
     @PrimaryGeneratedColumn()
     id: number;
 

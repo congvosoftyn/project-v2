@@ -2,12 +2,11 @@ import { Module } from '@nestjs/common';
 import { SettingService } from './setting.service';
 import { SettingController } from './setting.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppointmentSettingEntity } from 'src/entities/Setting.entity';
-import { SettingResolver } from './setting.resolver';
+import { SettingEntity } from 'src/entities/Setting.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([AppointmentSettingEntity])],
-  providers: [SettingService, SettingResolver],
+  imports: [TypeOrmModule.forFeature([SettingEntity])],
+  providers: [SettingService],
   controllers: [SettingController]
 })
 
