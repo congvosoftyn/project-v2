@@ -8,8 +8,8 @@ import { CreateAppointmentDto } from './dto/create-booking.dto';
 import { QueryHistoryByDateDto } from './dto/QueryHistoryByDate.dto';
 import { CancelBookingDto, UpdateBookingDto } from './dto/update-booking.dto';
 
-@Controller('appointment/booking')
-@ApiTags('appointment/booking')
+@Controller('bookings')
+@ApiTags('bookings')
 export class BookingController {
     constructor(private readonly bookingService: BookingService) { }
 

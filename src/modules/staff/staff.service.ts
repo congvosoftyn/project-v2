@@ -7,86 +7,32 @@ import { QueryBookingByStaffDto } from './dto/query-booking-staff.dto';
 import { QueryStaffServices } from './dto/query-staff-services.dto';
 import { PaginationDto } from "../../shared/dto/pagination.dto";
 import { AddServiceToStaffDto } from './dto/add-service-to-staff.dto';
-import { PackageEntity } from 'src/entities/Package.entity';
 import { WorkingHourEntity } from 'src/entities/WorkingHour.entity';
 import { BookingEntity } from 'src/entities/Booking.entity';
 import { CreateStaffDto } from './dto/create-staff.dto';
+import { ImportStaffDto } from './dto/import-staff.dto';
 
 @Injectable()
 export class StaffService {
   async getStaffs(storeId: number, query: QueryStaffServices = new QueryStaffServices()) {
-    const [staffs, count] = await StaffEntity.createQueryBuilder('staff')
-      .leftJoinAndSelect('staff.services', 'services', 'services.isActive = true',)
+    let queryStaff = StaffEntity.createQueryBuilder('staff')
       .leftJoinAndSelect('staff.workingHours', 'workingHours')
-      .leftJoinAndSelect('staff.breakTimes', 'breakTimes')
       .leftJoinAndSelect('staff.timeOffs', 'timeOffs')
       .where('staff.storeId = :storeId', { storeId })
       .andWhere('staff.isActive = true')
-      .groupBy('staff.id, services.id, workingHours.id, breakTimes.id, timeOffs.id')
+      .groupBy('staff.id, workingHours.id, timeOffs.id')
       .orderBy('staff.name', 'ASC')
       .take(query.size)
       .skip(query.page * query.size)
-      .getManyAndCount();
+
+    if (query.keyword) {
+      queryStaff = queryStaff.andWhere("LOWER(staff.name) ILIKE LOWER(:keyword)", { keyword: `%${query.keyword}%` })
+    }
+
+    const [staffs, count] = await queryStaff.getManyAndCount();
 
     return new PaginationDto(staffs, count, query.page, query.size);
   }
-
-  async getStaffByServices(query: QueryStaffServices, storeId: number) {
-    const packageIds = query.packageIds ? query.packageIds?.toString().split(",").map(Number) : [];
-    let serviceIds = query.serviceIds ? query.serviceIds.toString().split(",").map(Number) : [];
-    let packages = [];
-
-    if (packageIds.length > 0) {
-      packages = await PackageEntity.createQueryBuilder('package')
-        .leftJoinAndSelect("package.services", "services", "services.isActive = true")
-        .where("package.id in (:packageIds) ", { packageIds })
-        .getRawMany();
-
-      for (const pack of packages) {
-        if (pack.services_id) {
-          serviceIds.push(pack.services_id)
-        }
-      }
-    }
-
-    let _query = StaffEntity.createQueryBuilder('staff')
-      .leftJoin("staff.services", "services", "services.isService = true and services.isActive = true")
-      .leftJoinAndSelect('staff.workingHours', 'workingHours')
-      .leftJoinAndSelect('staff.breakTimes', 'breakTimes')
-      .where(`staff.storeId = :storeId`, { storeId })
-      .orderBy("staff.id", "ASC")
-
-    if (serviceIds.length > 0) {
-      _query = _query.andWhere('services.id in (:ids)', { ids: serviceIds })
-    }
-
-    return _query.getMany()
-  }
-
-  // async getStaffsCalendar(storeId: number, companyId: number, query: QueryStaffDto) {
-  //   let staffs = await StaffEntity.createQueryBuilder('staff')
-  //     .leftJoinAndSelect('staff.services', 'services', 'services.isActive = true',)
-  //     .leftJoinAndSelect('staff.workingHours', 'workingHours')
-  //     .leftJoinAndSelect('staff.breakTimes', 'breakTimes')
-  //     .leftJoinAndSelect('staff.timeOffs', 'timeOffs')
-  //     .leftJoinAndSelect('staff.booking', 'booking', "booking.isActive = true")
-  //     .leftJoinAndSelect('booking.customer', 'customer')
-  //     .leftJoin('customer.companyCustomer', 'companyCustomer', 'companyCustomer.companyId = :companyId', { companyId })
-  //     .where('staff.storeId = :storeId', { storeId })
-  //     .andWhere('staff.isActive = true')
-  //     .andWhere("booking.date >= :startDate", { startDate: query.startDate })
-  //     .andWhere("booking.date <= :endDate", { endDate: query.endDate })
-
-  //   if (query.staffId && +query.staffId === -1) {
-  //     // Working Staff
-  //     staffs = staffs.andWhere("length(booking) > 0")
-  //   }
-  //   if (query.staffId && +query.staffId !== -1) {
-  //     staffs = staffs.andWhere(`staff.id = ${+query.staffId}`)
-  //   }
-
-  //   return staffs.getMany();
-  // }
 
   async createStaff(bodyStaff: CreateStaffDto, storeId: number) {
     let staff = await StaffEntity.save(<StaffEntity>{
@@ -117,21 +63,28 @@ export class StaffService {
     return staff;
   }
 
-  async importStaff(staffs: StaffEntity[], storeId: number) {
-    for (let i = 0; i < staffs.length; i++) {
-      staffs[i].storeId = storeId;
-      await this.newStaffWorkingHour(staffs[i]);
+  async importStaff(bodyImportStaff: ImportStaffDto, storeId: number) {
+    const { staffs } = bodyImportStaff;
+    let newStaffs = [];
+    
+    for (const staff of staffs) {
+      newStaffs.push(<StaffEntity>{
+        name: staff.name,
+        email: staff.email,
+        phoneNumber: staff.phoneNumber,
+        avatar: staff.avatar,
+        description: staff.description,
+        breakTime: staff.breakTime,
+        storeId: storeId
+      })
     }
-    await StaffEntity.save(staffs);
-    return staffs;
+
+    return StaffEntity.save(newStaffs);
   }
 
-  async deleteStaff(id: number) {
-    const delete_staff = await StaffEntity.findOneBy({ id });
-    delete_staff.isActive = false;
-
-    if (!delete_staff) throw new NotFoundException(id);
-    return StaffEntity.save(delete_staff);
+  deleteStaff(id: number, storeId: number) {
+    return StaffEntity.createQueryBuilder().update({ isActive: true })
+      .where("id = :id and storeId = :storeId", { id, storeId }).execute();
   }
 
   private async newStaffWorkingHour(staff: StaffEntity) {
@@ -235,16 +188,10 @@ export class StaffService {
     return StaffEntity.save(staffUp);
   }
 
-  async getStaff(id: number, storeId: number) {
-    const staff = await StaffEntity.createQueryBuilder('staff')
+  getStaff(id: number, storeId: number) {
+    return StaffEntity.createQueryBuilder('staff')
       .leftJoin('staff.store', 'store')
-      .leftJoinAndSelect("staff.bookingInfos", "bookingInfos")
-      .leftJoinAndSelect("bookingInfos.service", "service", "service.isActive = true")
-      .leftJoinAndSelect("bookingInfos.packages", "packages")
-      .leftJoinAndSelect("bookingInfos.booking", "booking", "booking.isActive = true")
       .where('staff.id = :id and staff.storeId = :storeId', { id, storeId })
-      // .groupBy("booking.id")
-      // .addGroupBy("staff.id")
       .getOne();
 
     // return this.convertBooking(staff)

@@ -6,8 +6,8 @@ import { ValidationPipe } from 'src/shared/pipes/validation.pipe';
 import { CreateSettingDto } from './dto/create-setting.dto';
 import { SettingService } from './setting.service';
 
-@Controller('appointment/appointment-setting')
-@ApiTags('appointment/appointment-setting')
+@Controller('settings')
+@ApiTags('settings')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthenticationGuard)
 export class SettingController {

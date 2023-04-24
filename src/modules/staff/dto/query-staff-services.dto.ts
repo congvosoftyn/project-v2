@@ -5,8 +5,7 @@ export class QueryStaffServices {
       size: size || 50,
     };
   }
-  packageIds?: [number];
-  serviceIds?: [number];
   page?: number = 0;
   size?: number = 50;
+  keyword?: string = '';
 }

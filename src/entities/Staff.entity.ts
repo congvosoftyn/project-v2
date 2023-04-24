@@ -44,6 +44,6 @@ export class StaffEntity extends BaseEntity {
   @Column({ nullable: false })
   storeId: number;
 
-  @Column({ default: true })
+  @Column({ default: false })
   isActive: boolean;
 }

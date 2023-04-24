@@ -30,10 +30,26 @@ export class StaffController {
         return this.staffService.getStaffs(storeId, query);
     }
 
-    @Get("/staffs/services")
-    getStaffByPackages(@Query() query: QueryStaffServices, @User('storeId') storeId: number) {
-        return this.staffService.getStaffByServices(query, storeId);
+    @Put()
+    @UsePipes(new ValidationPipe())
+    async updateStaff(@Body() body: UpdateStaffDto) {
+        return this.staffService.updateStaff(body as StaffEntity);
     }
+
+    @Get('/:id')
+    getStaff(@Param('id') id: number, @User('storeId') storeId: number) {
+        return this.staffService.getStaff(id, storeId);
+    }
+
+    @Delete('/:id')
+    async deleteStaff(@Param('id') id: number, @User('storeId') storeId: number) {
+        return this.staffService.deleteStaff(id, storeId);
+    }
+
+    // @Get("/staffs/services")
+    // getStaffByPackages(@Query() query: QueryStaffServices, @User('storeId') storeId: number) {
+    //     return this.staffService.getStaffByServices(query, storeId);
+    // }
 
     @Get("/calendar")
     getBookingByStaff(@Query() query: QueryBookingByStaffDto, @User('storeId') storeId: number, @User('companyId') companyId: number) {
@@ -45,27 +61,9 @@ export class StaffController {
         return this.staffService.addServiceToStaff(staffId, storeId, body);
     }
 
-   
-
     @Post('/import')
     @UsePipes(new ValidationPipe())
     async importStaff(@Body() body: ImportStaffDto, @User('storeId') storeId: number) {
-        return this.staffService.importStaff(body.staffs as unknown as StaffEntity[], storeId);
-    }
-
-    @Patch()
-    @UsePipes(new ValidationPipe())
-    async updateStaff(@Body() body: UpdateStaffDto) {
-        return this.staffService.updateStaff(body as StaffEntity);
-    }
-
-    @Get('/:staffId')
-    getStaff(@Param('staffId') staffId: number, @User('storeId') storeId: number) {
-        return this.staffService.getStaff(staffId, storeId);
-    }
-
-    @Delete('/:id')
-    async deleteStaff(@Param('id') id: number) {
-        return this.staffService.deleteStaff(id);
+        return this.staffService.importStaff(body, storeId);
     }
 }

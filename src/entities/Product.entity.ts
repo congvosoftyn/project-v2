@@ -65,7 +65,7 @@ export class ProductEntity extends BaseEntity {
   @Column({ type: 'int' })
   storeId: number;
 
-  @ManyToOne((type) => TaxEntity, (tax) => tax.products, { cascade: ['insert', 'update'],nullable: true })
+  @ManyToOne((type) => TaxEntity, { onDelete: "CASCADE", onUpdate: "CASCADE", nullable: true })
   @JoinColumn({ name: 'taxId' })
   tax: TaxEntity;
 

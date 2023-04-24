@@ -1,8 +1,7 @@
-import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { StoreEntity } from "./Store.entity";
-import { ProductEntity } from './Product.entity'
 
-@Entity({ name: 'tax', orderBy: { orderBy: 'ASC' } })
+@Entity({ name: "tax" })
 export class TaxEntity extends BaseEntity {
     @PrimaryGeneratedColumn()
     id: number;
@@ -10,22 +9,22 @@ export class TaxEntity extends BaseEntity {
     @Column()
     name: string;
 
-    @Column({ type:"float" , default: 8.25 })
+    @Column({ type: "float", default: "8.25" })
     rate: number;
 
-    @Column({ default: 0 })
+    @Column({ type: "int", default: 0 })
     type: number;
 
-    @Column({ default: true })
-    isActive: boolean;
+    @Column({ name: "zip_code" })
+    zipCode: number;
 
-    @ManyToOne(type => StoreEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'storeId' })
+    @Column({default:false})
+    actived: boolean;
+
+    @ManyToOne(() => StoreEntity, { onDelete: "CASCADE", onUpdate: "CASCADE", nullable: true })
+    @JoinColumn({ name: "storeId" })
     store: StoreEntity;
 
-    @Column({ type: 'int' })
+    @Column()
     storeId: number;
-
-    @OneToMany(type => ProductEntity, product => product.tax, { cascade: ['insert', 'update'] })
-    products: ProductEntity[];
 }

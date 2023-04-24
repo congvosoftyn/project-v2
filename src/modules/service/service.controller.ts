@@ -8,8 +8,8 @@ import { CreateServiceDto } from './dto/create-service.dto';
 import { GetServiceDto } from './dto/get-service.dto';
 import { ServiceService } from './service.service';
 
-@Controller('appointment/service')
-@ApiTags('appointment/service')
+@Controller('services')
+@ApiTags('services')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthenticationGuard)
 export class ServiceController {

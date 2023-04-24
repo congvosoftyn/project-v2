@@ -1,12 +1,12 @@
 import { Entity, PrimaryGeneratedColumn, BaseEntity, Column, ManyToOne, JoinColumn } from "typeorm";
 import { StaffEntity } from "./Staff.entity";
 
-@Entity({ name: 'time_off', orderBy: { startDate: 'ASC' } })
+@Entity({ name: 'time_off'})
 export class TimeOffEntity extends BaseEntity {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ default: true })
+    @Column({ default: false })
     allDay: boolean;
 
     @ManyToOne(type => StaffEntity, { onDelete: 'CASCADE', onUpdate: "CASCADE" })

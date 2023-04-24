@@ -4,10 +4,10 @@ import JwtAuthenticationGuard from 'src/shared/guards/jwtAuthenticationGuard';
 import { PackageService } from './package.service';
 import { CreatePackageDto } from './dto/create-package.dto';
 
-@ApiTags('package-')
+@ApiTags('packages')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthenticationGuard)
-@Controller('package-')
+@Controller('packages')
 export class PackageController {
   constructor(private readonly packageService: PackageService) {}
 
