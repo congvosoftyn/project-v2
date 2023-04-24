@@ -1,39 +1,32 @@
 import { PartialType } from "@nestjs/swagger";
 import { AppointmentBookingStatus } from "src/entities/Booking.entity";
 
-export class Service {
-    id: number;
-    price: number = 0;
-    categoryId?: number;
-    staffId: number;
-}
-
-export class Package {
+export class ServiceBooking {
     id: number;
     price: number;
-    staffId: number;
+    duration: number;
+}
+
+export class PackageBooking {
+    id: number;
+    price: number;
+    duration: number;
 }
 
 export class AppointmentDto {
-    customerId?: number;
+    customerId: number;
     date: Date;
-    lastDate: Date;
     status: string = AppointmentBookingStatus.booked;
     color: string = '#EEEEEE';
     note?: string;
-    storeId?: number;
     isCheckIn: boolean = false;
-    labelId?: number;
-    remiderSent?: boolean = false;
-    followUpSent?: boolean = false;
-    didNotShow: boolean = false;
-    didNotShowSent: boolean = false;
-    duration: number;
     extraTime?: number = 0;
+    staffId: number;
 }
 
 export class CreateAppointmentDto extends PartialType(AppointmentDto) {
-    services?: Service[];
-    packages?: Package[];
+    services?: ServiceBooking[];
+    packages?: PackageBooking[];
     reason?: string;
+    storeId: number;
 }

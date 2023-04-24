@@ -10,6 +10,12 @@ export class BookingDetailEntity extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({name:"start_time", type:"datetime"})
+  startTime: Date;
+
+  @Column({name:"end_time", type:"datetime"})
+  endTime: Date;
+
   @ManyToOne(() => BookingEntity, booking => booking.bookingInfo)
   @JoinColumn({ name: 'bookingId' })
   booking: BookingEntity;

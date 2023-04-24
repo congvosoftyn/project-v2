@@ -16,7 +16,7 @@ export class BookingEntity extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne((type) => CustomerEntity, { cascade: ['insert', 'update'], eager: true })
+  @ManyToOne((type) => CustomerEntity, { cascade: ['insert', 'update',"remove"]})
   @JoinColumn({ name: 'customerId' })
   customer: CustomerEntity;
 
@@ -42,7 +42,7 @@ export class BookingEntity extends BaseEntity {
   @Column({ type: 'int' })
   storeId: number;
 
-  @Column({ default: true })
+  @Column({ default: false })
   isActive: boolean;
 
   @Column({ default: false })

@@ -30,4 +30,7 @@ export class SettingEntity extends BaseEntity {
 
   @Column({ type: 'int' })
   storeId: number;
+
+  @Column({default: "America/Chicago"})
+  timeZone: string;
 }

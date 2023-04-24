@@ -55,6 +55,6 @@ export class UserEntity extends BaseEntity {
   @Column()
   phoneNumber: string;
 
-  @OneToMany(()=>StoreEntity,store=>store.user,{onDelete:"CASCADE",onUpdate:"CASCADE"})
+  @OneToMany(() => StoreEntity, store => store.user, { onDelete: "CASCADE", onUpdate: "CASCADE" })
   store: StoreEntity;
 }
