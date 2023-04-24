@@ -19,9 +19,9 @@ export class StaffService {
       .leftJoinAndSelect('staff.workingHours', 'workingHours')
       .leftJoinAndSelect('staff.timeOffs', 'timeOffs')
       .where('staff.storeId = :storeId', { storeId })
-      .andWhere('staff.isActive = true')
+      .andWhere('staff.isActive = false')
       .groupBy('staff.id, workingHours.id, timeOffs.id')
-      .orderBy('staff.name', 'ASC')
+      // .orderBy('staff.id', 'ASC')
       .take(query.size)
       .skip(query.page * query.size)
 

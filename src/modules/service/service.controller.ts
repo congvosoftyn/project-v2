@@ -7,6 +7,7 @@ import { CreateServiceDto } from './dto/create-service.dto';
 import { GetServiceDto } from './dto/get-service.dto';
 import { ServiceService } from './service.service';
 import { UpdateServiceDto } from './dto/update-service.dto';
+import { QuerySearchPaginationDto } from 'src/shared/dto/query-search-pagination.dto';
 
 @Controller('services')
 @ApiTags('services')
@@ -16,8 +17,8 @@ export class ServiceController {
     constructor(private readonly serviceService: ServiceService) { }
 
     @Get()
-    async getServices(@Query() { search, size, page }: GetServiceDto, @User('storeId') storeId: number) {
-        return this.serviceService.getServices(storeId, search, size, page);
+    async getServices(@Query() queryService: QuerySearchPaginationDto, @User('storeId') storeId: number) {
+        return this.serviceService.getServices(storeId, queryService);
     }
 
     @Post()
