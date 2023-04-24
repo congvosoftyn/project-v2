@@ -20,7 +20,6 @@ export class StoreService {
 
     async getStore(id: number) {
         const store = await StoreEntity.findOne({ where: { id }, relations: ['openHours', 'setting'] });
-
         if(!store) throw new NotFoundException("Not found store!");
 
         if (store && store.openHours.length == 0) {
@@ -163,12 +162,18 @@ export class StoreService {
         return StoreEntity.delete(id);
     }
 
+    async findOneStore(id: number){
+        const store = await StoreEntity.findOne({where:{id}});
+        if(!store) throw new NotFoundException("Not found store");
+        return store;
+    }
+
     getStoreCategories() {
         return StoreEntity.createQueryBuilder('store')
             .select("categories")
             .distinct(true)
             .where("store.categories IS NOT NULL ")
-            .andWhere("LENGTH(store.categories)  > 0")
+            .andWhere("LENGTH(store.categories) > 0")
             .limit(10)
             .getRawMany();
     }

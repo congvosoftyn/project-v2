@@ -3,7 +3,7 @@ import { ProductEntity } from "./Product.entity";
 import { StoreEntity } from "./Store.entity";
 import { PackageEntity } from "./Package.entity";
 
-@Entity({ name: 'category', orderBy: { orderBy: 'ASC' } })
+@Entity({ name: 'category' })
 export class CategoryEntity extends BaseEntity {
     @PrimaryGeneratedColumn()
     id: number;
@@ -11,10 +11,7 @@ export class CategoryEntity extends BaseEntity {
     @Column()
     name: string;
 
-    @Column({ default: 0 })
-    orderBy: number;
-
-    @Column({ default: true })
+    @Column({ default: false })
     isActive: boolean;
 
     @ManyToOne(type => StoreEntity, { onDelete: 'CASCADE' })
@@ -24,9 +21,9 @@ export class CategoryEntity extends BaseEntity {
     @Column({ type: 'int' })
     storeId: number;
 
-    @OneToMany(type => ProductEntity, product => product.category)
+    @OneToMany(type => ProductEntity, product => product.category, { onDelete: "CASCADE", onUpdate: "CASCADE" })
     services: ProductEntity[];
 
-    @OneToMany(() => PackageEntity, aPackage => aPackage.category)
+    @OneToMany(() => PackageEntity, aPackage => aPackage.category, { onDelete: "CASCADE", onUpdate: "CASCADE" })
     packages: [PackageEntity];
 }
