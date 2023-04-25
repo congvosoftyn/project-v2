@@ -1,13 +1,7 @@
 import { PartialType } from "@nestjs/swagger";
 import { AppointmentBookingStatus } from "src/entities/Booking.entity";
 
-export class ServiceBooking {
-    id: number;
-    price: number;
-    duration: number;
-}
-
-export class PackageBooking {
+export class BodyServiceAndPackageBooking {
     id: number;
     price: number;
     duration: number;
@@ -25,8 +19,7 @@ export class AppointmentDto {
 }
 
 export class CreateAppointmentDto extends PartialType(AppointmentDto) {
-    services?: ServiceBooking[];
-    packages?: PackageBooking[];
+    services?: BodyServiceAndPackageBooking[];
+    packages?: BodyServiceAndPackageBooking[];
     reason?: string;
-    storeId: number;
 }

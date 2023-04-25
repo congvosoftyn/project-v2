@@ -23,11 +23,11 @@ export class BookingDetailEntity extends BaseEntity {
   @Column({ type: 'int' })
   bookingId: number;
 
-  @ManyToOne(() => ServiceEntity, { onDelete: "CASCADE", onUpdate: "CASCADE", nullable: true })
+  @ManyToOne(() => ServiceEntity, { onDelete: "CASCADE", onUpdate: "CASCADE" })
   @JoinColumn({ name: 'serviceId' })
   service: ServiceEntity;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'int'})
   serviceId: number;
 
   @ManyToOne(() => StaffEntity)
@@ -46,6 +46,9 @@ export class BookingDetailEntity extends BaseEntity {
 
   @Column("float")
   price: number;
+
+  @Column({ default: 0 })
+  duration: number;
 
   @Column({ default: false, type: "boolean" })
   deleted: boolean;

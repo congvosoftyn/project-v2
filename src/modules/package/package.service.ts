@@ -8,21 +8,33 @@ import { ServiceEntity } from 'src/entities/service.entity';
 export class PackageService {
   async create(createPackageDto: CreatePackageDto) {
     let services = await ServiceEntity.createQueryBuilder("service")
-      .where("service.id in (:ids) and service.isService = true", { ids: createPackageDto.serviceIds })
+      .where("service.id in (:ids)", { ids: createPackageDto.serviceIds })
       .getMany()
+    let duration = 0;
+    for (const service of services) {
+      duration += service.duration;
+    }
+
     return PackageEntity.save(<PackageEntity>{
       name: createPackageDto.name,
       categoryId: createPackageDto.categoryId,
       price: createPackageDto.price,
+      duration,
       services
     });
   }
 
-  findAll() {
+  findAll(storeId: number) {
     return PackageEntity.createQueryBuilder('package')
-      .leftJoin("package.", "")
-      .leftJoin("package.bookingInfo", "bookingInfo")
-      .leftJoin("package.services", "services", "services.isService = true")
+      .leftJoinAndSelect("package.services", "services")
+      .leftJoin("package.category", "category")
+      .select([
+        "package.id", "package.name", "package.price",
+        "category.id", "category.name", "category.storeId",
+        "services.id", "services.name", "services.price",
+        "services.duration", "services.description"
+      ])
+      .where("category.storeId = :storeId and package.deleted = true", { storeId })
       .getMany();
   }
 
@@ -49,6 +61,7 @@ export class PackageService {
   }
 
   remove(id: number) {
-    return PackageEntity.createQueryBuilder().update({ deleted: false }).where("id = :id", { id }).execute()
+    // return PackageEntity.createQueryBuilder().update({ deleted: false }).where("id = :id", { id }).execute()
+    return PackageEntity.delete({id});
   }
 }

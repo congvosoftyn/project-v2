@@ -1,17 +1,19 @@
 import { UserEntity } from 'src/entities/User.entity';
-import { CancelBookingDto, UpdateBookingDto } from './dto/update-booking.dto';
+import { CancelBookingDto } from './dto/update-booking.dto';
 import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { StaffEntity } from 'src/entities/Staff.entity';
 import { EmailService } from 'src/modules/email/email.service';
 import { BookingGateway } from './booking.gateway';
-import { QueryHistoryByDateDto } from './dto/QueryHistoryByDate.dto';
-import { CreateAppointmentDto } from './dto/create-booking.dto';
+import { CreateAppointmentDto, BodyServiceAndPackageBooking} from './dto/create-booking.dto';
 import { NotifyService } from 'src/modules/notify/notify.service';
 import { BookingEntity } from 'src/entities/Booking.entity';
 import { BookingDetailEntity } from 'src/entities/BookingDetail.entity';
 import { TimeOffEntity } from 'src/entities/TimeOff.entity';
 import { QueryBookingSlotsDto } from './dto/QueryBookingSlots.dto';
 import { SettingEntity } from 'src/entities/Setting.entity';
+import { PackageEntity } from 'src/entities/Package.entity';
+import { In } from 'typeorm';
+import { ServiceId } from 'aws-sdk/clients/apprunner';
 
 @Injectable()
 export class BookingService {
@@ -21,8 +23,6 @@ export class BookingService {
         private bookingGateway: BookingGateway,
         private readonly notifyService: NotifyService
     ) { }
-
-
 
     async getAppointments(storeId: number, companyId: number) {
         let bookings = await BookingEntity.createQueryBuilder('booking')
@@ -52,63 +52,97 @@ export class BookingService {
     }
 
     async createBookAppointment(bodyBooking: CreateAppointmentDto, storeId: number) {
-        const bodyServices = bodyBooking.services ? bodyBooking.services : [];
-        const bodyPackages = bodyBooking.packages ? bodyBooking.packages : [];
+        const bodyServices: BodyServiceAndPackageBooking[] = bodyBooking.services;
+        const bodyPackages: BodyServiceAndPackageBooking[] = bodyBooking.packages;
         let duration = 0;
 
         let listBookingDetailsDto = [];
 
         if (bodyServices.length > 0) {
             for (const service of bodyServices) {
-                duration += service.duration;
-                listBookingDetailsDto.push({
-                    serviceId: service.id,
-                    duration: service.duration,
-                    price: service.price
-                })
+                if (service.id !== 0) {
+                    duration += service.duration;
+                    listBookingDetailsDto.push({
+                        serviceId: service.id,
+                        duration: service.duration,
+                        price: service.price
+                    })
+                }
             }
         }
 
         if (bodyPackages.length > 0) {
-            for (const aPackage of bodyPackages) {
+            const ids = bodyPackages.map(pack => pack.id);
+            const packages = await this.findPackageByIds(ids);
+            for (const aPackage of packages) {
                 duration += aPackage.duration;
                 listBookingDetailsDto.push({
-                    serviceId: aPackage.id,
+                    packageId: aPackage.packageId,
+                    serviceId: aPackage.serviceId,
                     duration: aPackage.duration,
                     price: aPackage.price
                 })
             }
         }
 
-        const newBooking = BookingEntity.create(<BookingEntity>{
-            customerId: bodyBooking.customerId,
-            color: bodyBooking.color,
-            note: bodyBooking.note,
-            storeId: storeId,
-            duration,
-        })
+        // const newBooking = BookingEntity.create(<BookingEntity>{
+        //     customerId: bodyBooking.customerId,
+        //     color: bodyBooking.color,
+        //     note: bodyBooking.note,
+        //     storeId: storeId,
+        //     duration,
+        // })
 
-        const booking = await BookingEntity.save(newBooking);
+        // const booking = await BookingEntity.save(newBooking);
 
         let bookingDetails = [];
 
+        let startTime = bodyBooking.date;
+
         for (const bookingDetail of listBookingDetailsDto) {
-            let startTime = bodyBooking.date;
+            let endTime = this.addMinutes(new Date(startTime), bookingDetail.duration);
+
             bookingDetails.push(<BookingDetailEntity>{
                 startTime: startTime,
-                // endTime: 0,
-                booking,
-                serviceId: bookingDetail.serviceId ? bookingDetail.serviceId : null,
+                endTime: endTime,
+                // booking,
+                serviceId: bookingDetail.serviceId,
                 staffId: bodyBooking.staffId,
-                packageId:  bookingDetail.packageId ? bookingDetail.packageId : null,
+                packageId: bookingDetail.packageId ? bookingDetail.packageId : null,
                 price: bookingDetail.price,
+                duration: bookingDetail.duration
             })
+            startTime = endTime;
         }
 
-        BookingDetailEntity.save(bookingDetails);
+        // BookingDetailEntity.save(bookingDetails);
 
-        return booking;
+        // return booking;
+        return listBookingDetailsDto;
     }
+
+    addMinutes(date: Date, minutes: number) {
+        date.setMinutes(date.getMinutes() + minutes);
+        return date;
+    }
+
+    async findPackageByIds(ids: number[]) {
+        const packages = await PackageEntity.find({ where: { id: In(ids) }, relations: ["services"] });
+        let listPackageConvert = [];
+        for (const pac of packages) {
+            for (const service of pac.services) {
+                listPackageConvert.push({
+                    serviceId: service.id,
+                    price: pac.price,
+                    duration: service.duration,
+                    packageId: pac.id
+                })
+            }
+        }
+
+        return listPackageConvert;
+    }
+
 
     async findByBooking(id: number) {
         const booking = await BookingEntity.createQueryBuilder('booking')

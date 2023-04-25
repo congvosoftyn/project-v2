@@ -24,6 +24,9 @@ export class PackageEntity extends BaseEntity {
     @Column({ type: "float" })
     price: number;
 
+    @Column()
+    duration: number;
+
     @Column({ default: true, type: "boolean" })
     deleted: boolean;
 }

@@ -3,22 +3,23 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import JwtAuthenticationGuard from 'src/shared/guards/jwtAuthenticationGuard';
 import { PackageService } from './package.service';
 import { CreatePackageDto } from './dto/create-package.dto';
+import { User } from '../user/decorators/user.decorator';
 
 @ApiTags('packages')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthenticationGuard)
 @Controller('packages')
 export class PackageController {
-  constructor(private readonly packageService: PackageService) {}
+  constructor(private readonly packageService: PackageService) { }
 
   @Post()
   create(@Body() createPackageDto: CreatePackageDto) {
     return this.packageService.create(createPackageDto);
   }
 
-  @Get("/")
-  findAll() {
-    return this.packageService.findAll();
+  @Get()
+  findAll(@User("storeId") storeId: number) {
+    return this.packageService.findAll(storeId);
   }
 
   @Get(':id')
