@@ -272,7 +272,7 @@ export class StaffService {
     let services = []
     let packages = []
 
-    booking?.bookingInfo?.forEach((bI) => {
+    booking?.bookingDetail?.forEach((bI) => {
       if (bI.serviceId) {
         services.push({ ...bI.service, bookingInfoId: bI.id, deleted: bI.deleted, staffId: bI.staffId, staff: bI.staff })
       }
@@ -303,9 +303,9 @@ export class StaffService {
     let _bookings = [];
 
     listBooking?.forEach((booking) => {
-      booking?.bookingInfo?.forEach((bInfo) => {
+      booking?.bookingDetail?.forEach((bInfo) => {
         if (bInfo.staffId === _staff.id) {
-          let _booking = { ...booking, bookingInfo: booking?.bookingInfo?.filter((bI) => bI.staffId === staff.id) }
+          let _booking = { ...booking, bookingInfo: booking?.bookingDetail?.filter((bI) => bI.staffId === staff.id) }
           _bookings.push(_booking)
         }
       })

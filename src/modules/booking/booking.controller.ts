@@ -17,8 +17,8 @@ export class BookingController {
     constructor(private readonly bookingService: BookingService) { }
 
     @Get()
-    async getAppointments(@User('storeId') storeId: number, @User('companyId') companyId: number) {
-        return this.bookingService.getAppointments(storeId, companyId);
+    async getAppointments(@User('storeId') storeId: number) {
+        return this.bookingService.getAppointments(storeId);
     }
 
     @Get('/slots')
@@ -81,5 +81,5 @@ export class BookingController {
     //     return this.bookingService.getHistoryStatus(_query, storeId);
     // }
 
-    
+
 }

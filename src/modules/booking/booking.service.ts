@@ -4,7 +4,7 @@ import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/commo
 import { StaffEntity } from 'src/entities/Staff.entity';
 import { EmailService } from 'src/modules/email/email.service';
 import { BookingGateway } from './booking.gateway';
-import { CreateAppointmentDto, BodyServiceAndPackageBooking} from './dto/create-booking.dto';
+import { CreateAppointmentDto, BodyServiceAndPackageBooking } from './dto/create-booking.dto';
 import { NotifyService } from 'src/modules/notify/notify.service';
 import { BookingEntity } from 'src/entities/Booking.entity';
 import { BookingDetailEntity } from 'src/entities/BookingDetail.entity';
@@ -13,7 +13,7 @@ import { QueryBookingSlotsDto } from './dto/QueryBookingSlots.dto';
 import { SettingEntity } from 'src/entities/Setting.entity';
 import { PackageEntity } from 'src/entities/Package.entity';
 import { In } from 'typeorm';
-import { ServiceId } from 'aws-sdk/clients/apprunner';
+import { IListBookingDetail } from './interfaces/list-booking-detail.interface';
 
 @Injectable()
 export class BookingService {
@@ -24,39 +24,30 @@ export class BookingService {
         private readonly notifyService: NotifyService
     ) { }
 
-    async getAppointments(storeId: number, companyId: number) {
+    async getAppointments(storeId: number) {
         let bookings = await BookingEntity.createQueryBuilder('booking')
             .leftJoinAndSelect('booking.customer', 'customer')
-            .leftJoin('customer.companyCustomer', 'companyCustomer', 'companyCustomer.companyId = :companyId', { companyId })
-            .leftJoinAndSelect('booking.bookingInfo', 'bookingInfo')
-            .leftJoinAndSelect('bookingInfo.service', 'service', 'service.isService = true')
-            .leftJoinAndSelect('bookingInfo.packages', 'packages')
-            .leftJoinAndSelect('packages.services', '_services', '_services.isService = true')
-            .leftJoinAndSelect('bookingInfo.staff', 'staff')
-            .leftJoinAndSelect("booking.label", "label")
             .orderBy({ date: 'ASC' })
             .where("booking.storeId = :storeId", { storeId })
-            .addSelect('companyCustomer.nickname')
-            .addSelect('companyCustomer.id')
             .andWhere('booking.date >= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)')
             .andWhere('booking.isActive = true')
             .getMany();
 
         let _bookings = []
 
-        for (let booking of bookings) {
-            _bookings.push(this.convertReponseBooking(booking))
-        }
+        // for (let booking of bookings) {
+        //     _bookings.push(this.convertReponseBooking(booking))
+        // }
 
-        return _bookings
+        return bookings
     }
 
     async createBookAppointment(bodyBooking: CreateAppointmentDto, storeId: number) {
         const bodyServices: BodyServiceAndPackageBooking[] = bodyBooking.services;
         const bodyPackages: BodyServiceAndPackageBooking[] = bodyBooking.packages;
-        let duration = 0;
+        let duration = bodyBooking.extraTime;
 
-        let listBookingDetailsDto = [];
+        let listBookingDetailsDto: IListBookingDetail[] = [];
 
         if (bodyServices.length > 0) {
             for (const service of bodyServices) {
@@ -65,6 +56,7 @@ export class BookingService {
                     listBookingDetailsDto.push({
                         serviceId: service.id,
                         duration: service.duration,
+                        packageId: null,
                         price: service.price
                     })
                 }
@@ -85,46 +77,73 @@ export class BookingService {
             }
         }
 
-        // const newBooking = BookingEntity.create(<BookingEntity>{
-        //     customerId: bodyBooking.customerId,
-        //     color: bodyBooking.color,
-        //     note: bodyBooking.note,
-        //     storeId: storeId,
-        //     duration,
-        // })
+        const booking = await BookingEntity.save(<BookingEntity>{
+            customerId: bodyBooking.customerId,
+            color: bodyBooking.color,
+            note: bodyBooking.note,
+            storeId: storeId,
+            duration,
+            date: bodyBooking.date
+        })
 
-        // const booking = await BookingEntity.save(newBooking);
+        let bookingDetails: BookingDetailEntity[] = [];
 
-        let bookingDetails = [];
-
-        let startTime = bodyBooking.date;
+        let startTime: string = bodyBooking.startTime;
 
         for (const bookingDetail of listBookingDetailsDto) {
-            let endTime = this.addMinutes(new Date(startTime), bookingDetail.duration);
-
-            bookingDetails.push(<BookingDetailEntity>{
+            let endTime = this.addMinutes(startTime, bookingDetail.duration);
+            bookingDetails.push(<BookingDetailEntity><unknown>{
                 startTime: startTime,
                 endTime: endTime,
-                // booking,
+                booking,
                 serviceId: bookingDetail.serviceId,
                 staffId: bodyBooking.staffId,
-                packageId: bookingDetail.packageId ? bookingDetail.packageId : null,
+                packageId: bookingDetail.packageId,
                 price: bookingDetail.price,
-                duration: bookingDetail.duration
+                duration: bookingDetail.price
             })
             startTime = endTime;
         }
 
-        // BookingDetailEntity.save(bookingDetails);
+        BookingDetailEntity.save(bookingDetails);
 
-        // return booking;
-        return listBookingDetailsDto;
+        return booking;
     }
 
-    addMinutes(date: Date, minutes: number) {
-        date.setMinutes(date.getMinutes() + minutes);
-        return date;
+    addMinutes(time: string, minutes: number): string {
+        let hour = Number(time.split(":")[0]);
+        let minute: string = time.split(":")[1];
+
+        minute = (Number(minute) + minutes).toString();
+
+        if (Number(minute) >= 60) {
+            hour += 1;
+            minute = (Number(minute) - 60 === 0 ? "00" : Number(minute) - 60).toString();
+        }
+
+        return `${hour}:${minute}`;
     }
+
+    // addMinutes(date: Date, minutes: number) {
+    //      // let startTime = bodyBooking.startTime;
+
+    //     // for (const bookingDetail of listBookingDetailsDto) {
+    //     //     let endTime = this.addMinutes(new Date(startTime), bookingDetail.duration);
+    //     //     bookingDetails.push(<BookingDetailEntity>{
+    //     //         startTime: startTime,
+    //     //         endTime: endTime,
+    //     //         booking,
+    //     //         serviceId: bookingDetail.serviceId,
+    //     //         staffId: bodyBooking.staffId,
+    //     //         packageId: bookingDetail.packageId ? bookingDetail.packageId : null,
+    //     //         price: bookingDetail.price,
+    //     //         duration: bookingDetail.duration
+    //     //     })
+    //     //     startTime = endTime;
+    //     // }
+    //     date.setMinutes(date.getMinutes() + minutes);
+    //     return date;
+    // }
 
     async findPackageByIds(ids: number[]) {
         const packages = await PackageEntity.find({ where: { id: In(ids) }, relations: ["services"] });
@@ -165,7 +184,7 @@ export class BookingService {
         let services = []
         let packages = []
 
-        booking?.bookingInfo?.forEach((bI) => {
+        booking?.bookingDetail?.forEach((bI) => {
             // if (bI.serviceId && !bI.deleted) {
             if (bI.serviceId) {
                 services.push({ ...bI.service, bookingInfoId: bI.id, deleted: bI.deleted, staffId: bI.staffId, staff: bI.staff, tax: bI?.service?.tax })
@@ -319,7 +338,8 @@ export class BookingService {
         let topic = user.email.replace(/[^\w\s]/gi, '')
         this.notifyService.sendhNotiTopic(topic, 'Booking is deleted!')
 
-        return BookingEntity.createQueryBuilder().update({ isActive: false }).where("id = :id and storeId = :storeId", { id, storeId }).execute();
+        // return BookingEntity.createQueryBuilder().update({ isActive: false }).where("id = :id and storeId = :storeId", { id, storeId }).execute();
+        return BookingEntity.delete({ id });
     }
 
 

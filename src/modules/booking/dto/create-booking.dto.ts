@@ -10,11 +10,12 @@ export class BodyServiceAndPackageBooking {
 export class AppointmentDto {
     customerId: number;
     date: Date;
+    startTime: string;
     status: string = AppointmentBookingStatus.booked;
     color: string = '#EEEEEE';
     note?: string;
     isCheckIn: boolean = false;
-    extraTime?: number = 0;
+    extraTime: number = 0;
     staffId: number;
 }
 

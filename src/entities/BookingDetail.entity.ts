@@ -4,19 +4,18 @@ import { StaffEntity } from './Staff.entity';
 import { BookingEntity } from './Booking.entity';
 import { PackageEntity } from './Package.entity';
 
-
 @Entity('booking_detail')
 export class BookingDetailEntity extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({name:"start_time", type:"datetime"})
-  startTime: Date;
+  @Column({ type: "text", name: "start_time" })
+  startTime: string;
 
-  @Column({name:"end_time", type:"datetime"})
+  @Column({ type: "text", name: "end_time" })
   endTime: Date;
 
-  @ManyToOne(() => BookingEntity, booking => booking.bookingInfo)
+  @ManyToOne(() => BookingEntity, { onDelete: "CASCADE", onUpdate: "CASCADE" })
   @JoinColumn({ name: 'bookingId' })
   booking: BookingEntity;
 
@@ -27,7 +26,7 @@ export class BookingDetailEntity extends BaseEntity {
   @JoinColumn({ name: 'serviceId' })
   service: ServiceEntity;
 
-  @Column({ type: 'int'})
+  @Column({ type: 'int' })
   serviceId: number;
 
   @ManyToOne(() => StaffEntity)
@@ -53,9 +52,9 @@ export class BookingDetailEntity extends BaseEntity {
   @Column({ default: false, type: "boolean" })
   deleted: boolean;
 
-  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
-  public created_at: Date;
+  // @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
+  // public created_at: Date;
 
-  @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
-  public updated_at: Date;
+  // @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
+  // public updated_at: Date;
 }

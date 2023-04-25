@@ -4,11 +4,11 @@ import { CustomerEntity } from './Customer.entity';
 import { BookingDetailEntity } from './BookingDetail.entity';
 
 export enum AppointmentBookingStatus {
-  booked = 'booked',
-  confirmed = 'confirmed',
-  arrived = 'arrived',
-  completed = 'completed',
-  canceled = 'canceled',
+  booked = 'BOOKED',
+  confirmed = 'CONFIRMED',
+  arrived = 'ARRIVED',
+  completed = 'COMPLETED',
+  canceled = 'CANCELED',
 }
 
 @Entity('booking')
@@ -23,8 +23,11 @@ export class BookingEntity extends BaseEntity {
   @Column({ type: 'int' })
   customerId: number;
 
-  @OneToMany(() => BookingDetailEntity, info => info.booking)
-  bookingInfo: BookingDetailEntity[];
+  @Column()
+  date: Date;
+
+  @OneToMany(() => BookingDetailEntity, info => info.booking,{onDelete:"CASCADE",onUpdate:"CASCADE"})
+  bookingDetail: BookingDetailEntity[];
 
   @Column({ default: AppointmentBookingStatus.booked }) // danger, warning, ok
   status: string;
@@ -53,9 +56,6 @@ export class BookingEntity extends BaseEntity {
 
   @Column({ default: 0 })
   duration: number;
-
-  @Column({ default: 0 })
-  extraTime: number;
 
   @Column({ nullable: true })
   reason: string; // reason cancel booking
