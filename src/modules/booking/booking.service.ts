@@ -399,54 +399,60 @@ export class BookingService {
     // ex: /appointment/booking/slots/?date=06-13-2021&timezone=America/Chicago&staffId=9
     async getBookingSlots(_query: QueryBookingSlotsDto) {
         const { date, timezone, staffId } = _query;
-        const staff = await StaffEntity.findOne({ where: { id: staffId } });
+        const staff = await StaffEntity.findOne({ where: { id: staffId }, relations: ["workingHours"] });
+
         if (!staff) {
             throw new NotFoundException(`not found with id ${staffId}`);
         }
 
         const setting = await SettingEntity.findOne({ where: { storeId: staff.storeId }, relations: ["store"] });
-        let stringToDate = new Date(`${date}` as string);
-
+        let stringToDate = new Date(`${this.convertDate(date)}` as string);
         let pickedday = this.changeTimezone(stringToDate, `${timezone}` as string);
         const getWorkingDay = staff.workingHours.find(w => w.day === pickedday.getDay());
         let workingStart = this.convertStringToTime(getWorkingDay.fromHour, stringToDate, setting.timeZone, `${timezone}` as string);
         let workingEnd = this.convertStringToTime(getWorkingDay.toHour, stringToDate, setting.timeZone, `${timezone}` as string);
-        // if(stringToDate > workingStart) {
-        //     workingStart = stringToDate;
-        // }
-
         let today = new Date();
+
+        console.log({ workingStart, workingEnd, today })
+        
         let available: { time: Date, open: boolean }[] = this.getAllSlots(workingStart, workingEnd, setting.store.bookingSlotSize);
-        // let booking = await BookingEntity.createQueryBuilder('booking')
-        //     .leftJoinAndSelect('booking.service', 'service')
-        //     .where('booking.storeId = :storeId', { storeId: staff.storeId })
-        //     .andWhere('booking.isActive = true')
-        //     .andWhere('booking.staffId = :staffId', { staffId: staff.id })
-        //     .andWhere('booking.date between :workingStart and :workingEnd', { workingStart, workingEnd })
-        //     .getMany();
-        // for (let i = 0; i < available.length; i++) {
-        //     if (!getWorkingDay.open) available[i].open = false;
-        //     else if (today > available[i].time) available[i].open = false;
-        //     else if (booking.length > 0 && booking.some(b => {
-        //         const end = new Date(b.date)
-        //         end.setMinutes(end.getMinutes() + b.service.serviceDuration)
-        //         return available[i].time >= b.date && available[i].time < end;
-        //     })) {
-        //         available[i].open = false;
-        //     } else if (staff.breakTimes.some(b => {
-        //         const fromhhmm = b.fromHour.split(':');
-        //         const endhhmm = b.toHour.split(':');
-        //         let start = new Date(pickedday);
-        //         start.setHours(+fromhhmm[0], +fromhhmm[1]);
-        //         let end = new Date(pickedday);
-        //         end.setHours(+endhhmm[0], +endhhmm[1]);
-        //         return (b.day === available[i].time.getDay() && available[i].time >= start && available[i].time < end)
-        //     })) {
-        //         available[i].open = false;
-        //     } else if (this.checkIfDayOff(staff.timeOffs, available[i].time)) {
-        //         available[i].open = false;
-        //     }
-        // }
+      
+        let bookings = await BookingEntity.createQueryBuilder('booking')
+            // .leftJoinAndSelect('booking.service', 'service')
+            .leftJoinAndSelect("booking.bookingDetail", "bookingDetail")
+            .where('booking.storeId = :storeId AND booking.isActive = false', { storeId: staff.storeId })
+            .andWhere("bookingDetail.staffId = :staffId", { staffId: staff.id })
+            .andWhere('booking.date between :workingStart and :workingEnd', { workingStart, workingEnd })
+            .getMany();
+
+        console.log("bookings", bookings)
+        console.log("******************************")
+
+        for (let i = 0; i < available.length; i++) {
+            if (!getWorkingDay.open) available[i].open = false;
+            else if (today > available[i].time) available[i].open = false;
+            else if (bookings.length > 0 && bookings.some(b => {
+                const end = new Date(b.date)
+                // end.setMinutes(end.getMinutes() + b.service.serviceDuration)
+                return available[i].time >= b.date && available[i].time < end;
+            })) {
+                available[i].open = false;
+            } 
+            // else if (staff.breakTimes.some(b => {
+            //     const fromhhmm = b.fromHour.split(':');
+            //     const endhhmm = b.toHour.split(':');
+            //     let start = new Date(pickedday);
+            //     start.setHours(+fromhhmm[0], +fromhhmm[1]);
+            //     let end = new Date(pickedday);
+            //     end.setHours(+endhhmm[0], +endhhmm[1]);
+            //     return (b.day === available[i].time.getDay() && available[i].time >= start && available[i].time < end)
+            // })) {
+            //     available[i].open = false;
+            // }
+            //  else if (this.checkIfDayOff(staff.timeOffs, available[i].time)) {
+            //     available[i].open = false;
+            // }
+        }
 
         return available;
     }
@@ -513,9 +519,7 @@ export class BookingService {
                             }
                             start.setMonth(start.getMonth() + timeoff.repeatEvery);
                         }
-
                     }
-
                 }
             } else {
                 if (pickedDate >= timeoff.startDate && pickedDate <= timeoff.endDate) {
@@ -524,6 +528,13 @@ export class BookingService {
             }
         }
         return false;
+    }
+
+    convertDate(day: string) {
+        const dd = day.split("/")[0];
+        const MM = day.split("/")[1];
+        const YYYY = day.split("/")[2];
+        return `${MM}-${dd}-${YYYY}`;
     }
 
 
@@ -549,11 +560,9 @@ export class BookingService {
     }
 
     changeTimezone(date: Date, ianatz: string) {
-
         // suppose the date is 12:00 UTC
-        var invdate = new Date(date.toLocaleString('en-US', {
-            timeZone: ianatz
-        }));
+        // var invdate = new Date(date.toLocaleString('en-US', { timeZone: ianatz }));
+        var invdate = new Date(date);
 
         // then invdate will be 07:00 in Toronto
         // and the diff is 5 hours
@@ -561,7 +570,6 @@ export class BookingService {
 
         // so 12:00 in Toronto is 17:00 UTC
         return new Date(date.getTime() + diff);
-
     }
 
     getUser(userId: number) {
