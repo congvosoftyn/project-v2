@@ -13,6 +13,7 @@ import { StaffModule } from './staff/staff.module';
 import { SettingModule } from './setting/setting.module';
 import { TaxModule } from './tax/tax.module';
 import { TimeOffsModule } from './time-offs/time-offs.module';
+import { DemoModule } from './demo/demo.module';
 
 
 @Module({
@@ -30,7 +31,8 @@ import { TimeOffsModule } from './time-offs/time-offs.module';
         ServiceModule,
         TaxModule,
         StaffModule,
-        TimeOffsModule
+        TimeOffsModule,
+        DemoModule
     ],
 })
 export class ModulesModule { }

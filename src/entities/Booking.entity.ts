@@ -23,7 +23,7 @@ export class BookingEntity extends BaseEntity {
   @Column({ type: 'int' })
   customerId: number;
 
-  @Column()
+  @Column("datetime")
   date: Date;
 
   @OneToMany(() => BookingDetailEntity, info => info.booking,{onDelete:"CASCADE",onUpdate:"CASCADE"})
