@@ -434,7 +434,7 @@ export class BookingService {
     // ex: /appointment/booking/slots/?date=06-13-2021&timezone=America/Chicago&staffId=9
     async getBookingSlots(_query: QueryBookingSlotsDto, storeId: number) {
         const { date, timezone, staffId } = _query;
-        const staff = await StaffEntity.findOne({ where: { id: staffId }, relations: ["workingHours"], });
+        const staff = await StaffEntity.findOne({ where: { id: staffId }, relations: ["workingHours", "timeOffs"], });
 
         if (!staff) throw new NotFoundException(`not found with id ${staffId}`);
 
@@ -477,53 +477,12 @@ export class BookingService {
                 })
             ) {
                 available.open = false;
+            } else if (this.checkIfDayOff(staff.timeOffs, available.time)) {
+                available.open = false;
             }
         }
 
         return availables;
-
-        // let arr = [];
-
-        // for (const available of availables) {
-        //     arr.push({
-        //         time: `${format(available.time, "hh:mm:ss a")}`,
-        //         open: available.open
-        //     })
-        // }
-
-        // return arr;
-
-        // return { bookingDetails, array, availables }
-        // return { bookingDetails, availables };
-
-
-        // for (let i = 0; i < available.length; i++) {
-        //     if (!getWorkingDay.open) available[i].open = false;
-        //     else if (today > available[i].time) available[i].open = false;
-        //     else if (bookings.length > 0 && bookings.some(b => {
-        //         const end = new Date(b.date)
-        //         // end.setMinutes(end.getMinutes() + b.service.serviceDuration)
-        //         return available[i].time >= b.date && available[i].time < end;
-        //     })) {
-        //         available[i].open = false;
-        //     }
-        //     // else if (staff.breakTimes.some(b => {
-        //     //     const fromhhmm = b.fromHour.split(':');
-        //     //     const endhhmm = b.toHour.split(':');
-        //     //     let start = new Date(pickedday);
-        //     //     start.setHours(+fromhhmm[0], +fromhhmm[1]);
-        //     //     let end = new Date(pickedday);
-        //     //     end.setHours(+endhhmm[0], +endhhmm[1]);
-        //     //     return (b.day === available[i].time.getDay() && available[i].time >= start && available[i].time < end)
-        //     // })) {
-        //     //     available[i].open = false;
-        //     // }
-        //     //  else if (this.checkIfDayOff(staff.timeOffs, available[i].time)) {
-        //     //     available[i].open = false;
-        //     // }
-        // }
-
-        // return available;
     }
 
     compareTwoDateTime(date: Date | string): string {
@@ -541,90 +500,24 @@ export class BookingService {
     }
 
     checkIfDayOff(timeOffs: TimeOffEntity[], pickedDate: Date) {
-        for (let i = 0; i < timeOffs.length; i++) {
-            //check timeoff
-            let timeoff = timeOffs[i];
-            const end = new Date(timeoff.endDate);
-            let start = new Date(timeoff.startDate);
-            if (end < pickedDate) return false;
-            if (timeoff.repeat) {
-                if (timeoff.repeat == "daily") {
-                    if (pickedDate >= timeoff.startDate && pickedDate <= end) {
-                        while (start < end) {
-                            if (
-                                start.getDate() === pickedDate.getDate() &&
-                                start.getMonth() === pickedDate.getMonth() &&
-                                start.getFullYear() === pickedDate.getFullYear()
-                            ) {
-                                if (timeoff.allDay) {
-                                    return true;
-                                } else {
-                                    const dayEnd = new Date(start);
-                                    dayEnd.setMinutes(dayEnd.getMinutes() + timeoff.duration);
-                                    if (pickedDate > start && pickedDate < dayEnd) {
-                                        return true;
-                                    }
-                                }
-                            }
-                            start.setDate(start.getDate() + timeoff.repeatEvery);
-                        }
-                    }
-                } else if (timeoff.repeat == "weekly") {
-                    const timeOff = timeoff.repeatOn.map(Number);
-                    if (timeOff.includes(pickedDate.getDay())) {
-                        if (pickedDate >= start && pickedDate <= end) {
-                            let nextDay = new Date(pickedDate);
-                            for (let day of timeOffs) {
-                                if (timeoff.allDay) {
-                                    return true;
-                                } else {
-                                    const dayEnd = new Date(nextDay);
-                                    dayEnd.setMinutes(dayEnd.getMinutes() + timeoff.duration);
-                                    if (pickedDate > nextDay && pickedDate < dayEnd) {
-                                        return true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else if (timeoff.repeat == "monthly") {
-                    if (
-                        pickedDate >= timeoff.startDate &&
-                        pickedDate <= timeoff.endDate
-                    ) {
-                        while (start < timeoff.endDate) {
-                            if (
-                                start.getDate() === pickedDate.getDate() &&
-                                start.getMonth() === pickedDate.getMonth() &&
-                                start.getFullYear() === pickedDate.getFullYear()
-                            ) {
-                                if (timeoff.allDay) {
-                                    return true;
-                                } else {
-                                    const dayEnd = new Date(start);
-                                    dayEnd.setMinutes(dayEnd.getMinutes() + timeoff.duration);
-                                    if (pickedDate > start && pickedDate < dayEnd) {
-                                        return true;
-                                    }
-                                }
-                            }
-                            start.setMonth(start.getMonth() + timeoff.repeatEvery);
-                        }
-                    }
+        for (const timeOff of timeOffs) {
+            if (format(pickedDate, "yyyy-MM-dd") === format(timeOff.startDate, "yyyy-MM-dd")) {
+                if (
+                    Date.parse(format(pickedDate, "yyyy-MM-dd hh:mm:ss a")) >= Date.parse(format(timeOff.startDate, "yyyy-MM-dd hh:mm:ss a")) &&
+                    Date.parse(format(pickedDate, "yyyy-MM-dd hh:mm:ss a")) < Date.parse(format(timeOff.endDate, "yyyy-MM-dd hh:mm:ss a"))
+                ) {
+                    return true
                 }
             } else {
-                if (pickedDate >= timeoff.startDate && pickedDate <= timeoff.endDate) {
-                    return true;
-                }
+                return false
             }
         }
+
         return false;
     }
 
     convertDate(day: string) {
-        const dd = day.split("/")[0];
-        const MM = day.split("/")[1];
-        const YYYY = day.split("/")[2];
+        const [dd, MM, YYYY] = day.split("/");
         return `${MM}-${dd}-${YYYY}`;
     }
 
@@ -642,19 +535,15 @@ export class BookingService {
         return arr;
     }
 
-    convertStringToTime(
-        time: string,
-        pickDate: Date,
-        storeTimezone: string,
-        customerTimezone: string = ""
-    ) {
+    convertStringToTime(time: string, pickDate: Date, storeTimezone: string, customerTimezone: string = "") {
         const [hh, mm] = time.split(":");
         //change timezone to store timezone
         let result = this.changeTimezone(pickDate, storeTimezone);
         result.setHours(+hh, +mm);
         //change timezone customer timezone
-        if (customerTimezone)
+        if (customerTimezone){
             result = this.changeTimezone(result, customerTimezone);
+        }
         return result;
     }
 
