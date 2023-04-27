@@ -11,13 +11,12 @@ export class DemoService {
   }
 
   findAll(query: QueryDemoDto) {
-    // console.log("date",date)
-    const start = new Date(query.startDate);
+    const start = new Date(`${query.startDate}`);
     start.setHours(9, 0, 0, 0);
-    const end = new Date(query.endDate);
+    const end = new Date(`${query.endDate}`);
     end.setHours(17, 0, 0, 0);
-    console.log({ start, end })
-    console.log(`date: ${start.toISOString()} `)
+    // console.log({ start, end })
+    // console.log(`date: ${start.toISOString()} `)
 
     return DemoEntity.createQueryBuilder("de")
       .where(`de.date between :start and :end`, { start: start.toISOString(), end: end.toISOString() })

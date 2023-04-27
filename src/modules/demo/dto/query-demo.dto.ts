@@ -1,4 +1,4 @@
 export class QueryDemoDto {
-    startDate?: Date = new Date();
-    endDate?: Date = new Date();
+    startDate: string = new Date().toISOString();
+    endDate: string = new Date().toISOString();
 }
