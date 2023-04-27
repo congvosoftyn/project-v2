@@ -22,16 +22,9 @@ export class BookingController {
     }
 
     @Get('/slots')
-    async getBookingSlots(@Query() _query: QueryBookingSlotsDto) {
-        return this.bookingService.getBookingSlots(_query);
+    async getBookingSlots(@Query() query: QueryBookingSlotsDto, @User('storeId') storeId: number) {
+        return this.bookingService.getBookingSlots(query, storeId);
     }
-
-    // @Get('/calendar-slots')
-    // @ApiBearerAuth('access-token')
-    // @UseGuards(JwtAuthenticationGuard)
-    // async getCalendarSlot(@Query('date') date: Date, @Query('staffId') staffId: number) {
-    //     return this.bookingService.getCalendarSlot(date, staffId);
-    // }
 
     @Post()
     @UsePipes(new ValidationPipe())
@@ -59,27 +52,8 @@ export class BookingController {
         return this.bookingService.findByBooking(+id)
     }
 
-
-    // @Get('/history/customer/:id')
-    // @ApiBearerAuth('access-token')
-    // @UseGuards(JwtAuthenticationGuard)
-    // async getHistoryByCustomer(@Param('id') id: number, @User('storeId') storeId: number,) {
-    //     return this.bookingService.getHistoryByCustomer(id, storeId);
+    // @Get('/calendar-slots')
+    // async getCalendarSlot(@Query('date') date: Date, @Query('staffId') staffId: number, @User('storeId') storeId: number) {
+    //     return this.bookingService.getCalendarSlot(date, staffId,storeId);
     // }
-
-    // @Get('/history/date')
-    // @ApiBearerAuth('access-token')
-    // @UseGuards(JwtAuthenticationGuard)
-    // @UsePipes(new ValidationPipe())
-    // async getHistoryByDate(@Query() _query: QueryHistoryByDateDto, @User('storeId') storeId: number, @User('companyId') companyId: number) {
-    //     return this.bookingService.getHistoryByDate(_query, storeId, companyId);
-    // }
-
-    // @Get('/history/status')
-    // @UsePipes(new ValidationPipe())
-    // async getHistoryStatus(@Query() _query: QueryHistoryByDateDto, @User('storeId') storeId: number) {
-    //     return this.bookingService.getHistoryStatus(_query, storeId);
-    // }
-
-
 }

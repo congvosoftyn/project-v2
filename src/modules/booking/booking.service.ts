@@ -1,19 +1,20 @@
-import { UserEntity } from 'src/entities/User.entity';
-import { CancelBookingDto } from './dto/update-booking.dto';
-import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { StaffEntity } from 'src/entities/Staff.entity';
-import { EmailService } from 'src/modules/email/email.service';
-import { BookingGateway } from './booking.gateway';
-import { CreateAppointmentDto, BodyServiceAndPackageBooking } from './dto/create-booking.dto';
-import { NotifyService } from 'src/modules/notify/notify.service';
-import { BookingEntity } from 'src/entities/Booking.entity';
-import { BookingDetailEntity } from 'src/entities/BookingDetail.entity';
-import { TimeOffEntity } from 'src/entities/TimeOff.entity';
-import { QueryBookingSlotsDto } from './dto/QueryBookingSlots.dto';
-import { SettingEntity } from 'src/entities/Setting.entity';
-import { PackageEntity } from 'src/entities/Package.entity';
-import { In } from 'typeorm';
-import { IListBookingDetail } from './interfaces/list-booking-detail.interface';
+import { UserEntity } from "src/entities/User.entity";
+import { CancelBookingDto } from "./dto/update-booking.dto";
+import { forwardRef, Inject, Injectable, NotFoundException, } from "@nestjs/common";
+import { StaffEntity } from "src/entities/Staff.entity";
+import { EmailService } from "src/modules/email/email.service";
+import { BookingGateway } from "./booking.gateway";
+import { CreateAppointmentDto, BodyServiceAndPackageBooking, } from "./dto/create-booking.dto";
+import { NotifyService } from "src/modules/notify/notify.service";
+import { BookingEntity } from "src/entities/Booking.entity";
+import { BookingDetailEntity } from "src/entities/BookingDetail.entity";
+import { TimeOffEntity } from "src/entities/TimeOff.entity";
+import { QueryBookingSlotsDto } from "./dto/QueryBookingSlots.dto";
+import { SettingEntity } from "src/entities/Setting.entity";
+import { IListBookingDetail } from "./interfaces/list-booking-detail.interface";
+import { PackageEntity } from "src/entities/Package.entity";
+import { In } from "typeorm";
+import { format } from "date-fns";
 
 @Injectable()
 export class BookingService {
@@ -25,21 +26,21 @@ export class BookingService {
     ) { }
 
     async getAppointments(storeId: number) {
-        let bookings = await BookingEntity.createQueryBuilder('booking')
-            .leftJoinAndSelect('booking.customer', 'customer')
-            .orderBy({ date: 'ASC' })
+        let bookings = await BookingEntity.createQueryBuilder("booking")
+            .leftJoinAndSelect("booking.customer", "customer")
+            .orderBy({ date: "ASC" })
             .where("booking.storeId = :storeId", { storeId })
-            .andWhere('booking.date >= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)')
-            .andWhere('booking.isActive = true')
+            .andWhere("booking.date >= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)")
+            .andWhere("booking.isActive = true")
             .getMany();
 
-        let _bookings = []
+        let _bookings = [];
 
         // for (let booking of bookings) {
         //     _bookings.push(this.convertReponseBooking(booking))
         // }
 
-        return bookings
+        return bookings;
     }
 
     async createBookAppointment(bodyBooking: CreateAppointmentDto, storeId: number) {
@@ -57,14 +58,14 @@ export class BookingService {
                         serviceId: service.id,
                         duration: service.duration,
                         packageId: null,
-                        price: service.price
-                    })
+                        price: service.price,
+                    });
                 }
             }
         }
 
         if (bodyPackages.length > 0) {
-            const ids = bodyPackages.map(pack => pack.id);
+            const ids = bodyPackages.map((pack) => pack.id);
             const packages = await this.findPackageByIds(ids);
             for (const aPackage of packages) {
                 duration += aPackage.duration;
@@ -72,8 +73,8 @@ export class BookingService {
                     packageId: aPackage.packageId,
                     serviceId: aPackage.serviceId,
                     duration: aPackage.duration,
-                    price: aPackage.price
-                })
+                    price: aPackage.price,
+                });
             }
         }
 
@@ -83,8 +84,8 @@ export class BookingService {
             note: bodyBooking.note,
             storeId: storeId,
             duration,
-            date: bodyBooking.date
-        })
+            date: bodyBooking.date,
+        });
 
         let bookingDetails: BookingDetailEntity[] = [];
 
@@ -100,8 +101,8 @@ export class BookingService {
                 staffId: bodyBooking.staffId,
                 packageId: bookingDetail.packageId,
                 price: bookingDetail.price,
-                duration: bookingDetail.price
-            })
+                duration: bookingDetail.price,
+            });
             startTime = endTime;
         }
 
@@ -118,35 +119,42 @@ export class BookingService {
 
         if (Number(minute) >= 60) {
             hour += 1;
-            minute = (Number(minute) - 60 === 0 ? "00" : Number(minute) - 60).toString();
+            minute = (
+                Number(minute) - 60 === 0 ? "00" : Number(minute) - 60
+            ).toString();
         }
 
         return `${hour}:${minute}`;
     }
 
-    // addMinutes(date: Date, minutes: number) {
-    //      // let startTime = bodyBooking.startTime;
-
-    //     // for (const bookingDetail of listBookingDetailsDto) {
-    //     //     let endTime = this.addMinutes(new Date(startTime), bookingDetail.duration);
-    //     //     bookingDetails.push(<BookingDetailEntity>{
-    //     //         startTime: startTime,
-    //     //         endTime: endTime,
-    //     //         booking,
-    //     //         serviceId: bookingDetail.serviceId,
-    //     //         staffId: bodyBooking.staffId,
-    //     //         packageId: bookingDetail.packageId ? bookingDetail.packageId : null,
-    //     //         price: bookingDetail.price,
-    //     //         duration: bookingDetail.duration
-    //     //     })
-    //     //     startTime = endTime;
-    //     // }
-    //     date.setMinutes(date.getMinutes() + minutes);
-    //     return date;
-    // }
+    /*
+          addMinutes(date: Date, minutes: number) {
+               // let startTime = bodyBooking.startTime;
+      
+              // for (const bookingDetail of listBookingDetailsDto) {
+              //     let endTime = this.addMinutes(new Date(startTime), bookingDetail.duration);
+              //     bookingDetails.push(<BookingDetailEntity>{
+              //         startTime: startTime,
+              //         endTime: endTime,
+              //         booking,
+              //         serviceId: bookingDetail.serviceId,
+              //         staffId: bodyBooking.staffId,
+              //         packageId: bookingDetail.packageId ? bookingDetail.packageId : null,
+              //         price: bookingDetail.price,
+              //         duration: bookingDetail.duration
+              //     })
+              //     startTime = endTime;
+              // }
+              date.setMinutes(date.getMinutes() + minutes);
+              return date;
+          }
+      */
 
     async findPackageByIds(ids: number[]) {
-        const packages = await PackageEntity.find({ where: { id: In(ids) }, relations: ["services"] });
+        const packages = await PackageEntity.find({
+            where: { id: In(ids) },
+            relations: ["services"],
+        });
         let listPackageConvert = [];
         for (const pac of packages) {
             for (const service of pac.services) {
@@ -154,93 +162,114 @@ export class BookingService {
                     serviceId: service.id,
                     price: pac.price,
                     duration: service.duration,
-                    packageId: pac.id
-                })
+                    packageId: pac.id,
+                });
             }
         }
 
         return listPackageConvert;
     }
 
-
     async findByBooking(id: number) {
-        const booking = await BookingEntity.createQueryBuilder('booking')
+        const booking = await BookingEntity.createQueryBuilder("booking")
             .leftJoinAndSelect("booking.bookingInfo", "bookingInfo")
-            .leftJoinAndSelect("bookingInfo.service", "service", "service.isService = true")
+            .leftJoinAndSelect(
+                "bookingInfo.service",
+                "service",
+                "service.isService = true"
+            )
             .leftJoinAndSelect("service.tax", "tax")
             .leftJoinAndSelect("bookingInfo.staff", "staff")
             .leftJoinAndSelect("bookingInfo.packages", "packages")
-            .leftJoinAndSelect("packages.services", "_services", "_services.isService = true")
+            .leftJoinAndSelect(
+                "packages.services",
+                "_services",
+                "_services.isService = true"
+            )
             .leftJoinAndSelect("_services.tax", "_tax")
             .leftJoinAndSelect("booking.label", "label")
             .leftJoinAndSelect("booking.customer", "customer")
-            .where('booking.id = :id', { id })
+            .where("booking.id = :id", { id })
             .getOne();
 
-        return this.convertReponseBooking(booking)
+        return this.convertReponseBooking(booking);
     }
 
     convertReponseBooking(booking: BookingEntity) {
-        let services = []
-        let packages = []
+        let services = [];
+        let packages = [];
 
         booking?.bookingDetail?.forEach((bI) => {
-            // if (bI.serviceId && !bI.deleted) {
             if (bI.serviceId) {
-                services.push({ ...bI.service, bookingInfoId: bI.id, deleted: bI.deleted, staffId: bI.staffId, staff: bI.staff, tax: bI?.service?.tax })
+                services.push({
+                    ...bI.service,
+                    bookingInfoId: bI.id,
+                    deleted: bI.deleted,
+                    staffId: bI.staffId,
+                    staff: bI.staff,
+                    tax: bI?.service?.tax,
+                });
             }
             if (bI.packageId) {
-                packages.push({ ...bI.packages, bookingInfoId: bI.id, deleted: bI.deleted, staffId: bI.staffId, staff: bI.staff })
+                packages.push({
+                    ...bI.packages,
+                    bookingInfoId: bI.id,
+                    deleted: bI.deleted,
+                    staffId: bI.staffId,
+                    staff: bI.staff,
+                });
             }
-        })
+        });
 
         packages = packages.map((_package) => {
-            return ({
+            return {
                 ..._package,
-                duration: _package.services.reduce((a, b) => a + b.serviceDuration, 0)
-            })
-        })
+                duration: _package.services.reduce((a, b) => a + b.serviceDuration, 0),
+            };
+        });
 
         let _booking = {
             ...booking,
             bookingInfo: undefined,
             services: services,
-            packages: packages
-        }
+            packages: packages,
+        };
 
         return _booking;
     }
 
-    // async getHistoryByDate(_query: QueryHistoryByDateDto, storeId: number, companyId: number) {
-    //     const { start, end, staffId } = _query;
-
-    //     let query = StaffEntity.createQueryBuilder('staff')
-    //         .leftJoin("staff.bookingInfo", "bookingInfo")
-    //         .leftJoin("bookingInfo.booking", "booking")
-    //         .leftJoin('booking.customer', 'customer')
-    //         .leftJoin('customer.companyCustomer', 'companyCustomer', 'companyCustomer.companyId = :companyId', { companyId })
-    //         .leftJoin('booking.service', 'service', 'service.isService = true AND service.isActive = true')
-    //         .select([
-    //             "staff.id as staffId", "staff.storeId as storeId",
-    //             "staff.name as staffName", "booking.id as bookingId",
-    //             "booking.storeId as bookingStoreId",
-    //             "booking.duration as duration", "booking.date as date",
-    //             "booking.color as color", "booking.serviceId as serviceId",
-    //             "service.name as serviceName", "service.price as servicePrice",
-    //             "service.cost as serviceCost", "service.serviceDuration as serviceDuration",
-    //         ])
-    //         .where(`staff.storeId = :storeId AND (${staffId && +staffId === -1 ? "booking.id is null or" : ''} (booking.isActive = true AND booking.date between :start and :end AND booking.storeId = :storeId))`, { storeId, start, end })
-    //         .groupBy("staffId, storeId, bookingId")
-
-    //     if (staffId && +staffId !== -1 && +staffId !== 0) {
-    //         query = query.andWhere(`staff.id = :staffId`, { staffId: +staffId })
-    //     }
-
-    //     return query.getRawMany();
-    // }
+    /*
+          async getHistoryByDate(_query: QueryHistoryByDateDto, storeId: number, companyId: number) {
+              const { start, end, staffId } = _query;
+      
+              let query = StaffEntity.createQueryBuilder('staff')
+                  .leftJoin("staff.bookingInfo", "bookingInfo")
+                  .leftJoin("bookingInfo.booking", "booking")
+                  .leftJoin('booking.customer', 'customer')
+                  .leftJoin('customer.companyCustomer', 'companyCustomer', 'companyCustomer.companyId = :companyId', { companyId })
+                  .leftJoin('booking.service', 'service', 'service.isService = true AND service.isActive = true')
+                  .select([
+                      "staff.id as staffId", "staff.storeId as storeId",
+                      "staff.name as staffName", "booking.id as bookingId",
+                      "booking.storeId as bookingStoreId",
+                      "booking.duration as duration", "booking.date as date",
+                      "booking.color as color", "booking.serviceId as serviceId",
+                      "service.name as serviceName", "service.price as servicePrice",
+                      "service.cost as serviceCost", "service.serviceDuration as serviceDuration",
+                  ])
+                  .where(`staff.storeId = :storeId AND (${staffId && +staffId === -1 ? "booking.id is null or" : ''} (booking.isActive = true AND booking.date between :start and :end AND booking.storeId = :storeId))`, { storeId, start, end })
+                  .groupBy("staffId, storeId, bookingId")
+      
+              if (staffId && +staffId !== -1 && +staffId !== 0) {
+                  query = query.andWhere(`staff.id = :staffId`, { staffId: +staffId })
+              }
+      
+              return query.getRawMany();
+          }
+          */
 
     getHistoryByCustomer(id: number, storeId: number) {
-        return BookingEntity.find({ where: { storeId, customerId: id } })
+        return BookingEntity.find({ where: { storeId, customerId: id } });
     }
 
     // async updateAppointment(bookingId: number, booking: UpdateBookingDto, userId: number) {
@@ -323,141 +352,193 @@ export class BookingService {
     // }
 
     async cancelAppointment(id: number, booking: CancelBookingDto, userId: number) {
-        const result = await BookingEntity.createQueryBuilder().update({ status: booking.status, reason: booking.reason }).where("id = :id ", { id }).execute();
-        const user = await this.getUser(userId)
-        let topic = user.email.replace(/[^\w\s]/gi, '')
-        this.notifyService.sendhNotiTopic(topic, `Booking is ${booking.status}!`)
-        return result
+        const result = await BookingEntity.createQueryBuilder()
+            .update({ status: booking.status, reason: booking.reason })
+            .where("id = :id ", { id })
+            .execute();
+        const user = await this.getUser(userId);
+        let topic = user.email.replace(/[^\w\s]/gi, "");
+        this.notifyService.sendhNotiTopic(topic, `Booking is ${booking.status}!`);
+        return result;
     }
 
     async deleteAppointment(id: number, storeId: number, userId: number) {
         const deleteB = await BookingEntity.findOneBy({ id });
         if (deleteB.isActive === false) return deleteB;
 
-        const user = await this.getUser(userId)
-        let topic = user.email.replace(/[^\w\s]/gi, '')
-        this.notifyService.sendhNotiTopic(topic, 'Booking is deleted!')
+        const user = await this.getUser(userId);
+        let topic = user.email.replace(/[^\w\s]/gi, "");
+        this.notifyService.sendhNotiTopic(topic, "Booking is deleted!");
 
-        // return BookingEntity.createQueryBuilder().update({ isActive: false }).where("id = :id and storeId = :storeId", { id, storeId }).execute();
-        return BookingEntity.delete({ id });
+        return BookingEntity.createQueryBuilder()
+            .update({ isActive: false })
+            .where("id = :id and storeId = :storeId", { id, storeId })
+            .execute();
     }
 
-
-    // async getCalendarSlot(date: Date, staffId: number) {
-
-    //     const staff = await StaffEntity.findOne({ where: { id: staffId } });
-    //     // if (!staff) next(new NotFoundException(`${staffId}` as string));
-
-    //     const bookingSetting = await AppointmentSettingEntity.findOne({ where: { storeId: staff.storeId } });
-    //     const storeSetting = await StoreSettingEntity.findOne({ where: { storeId: staff.storeId } });
-    //     let stringToDate = new Date(`${date}` as string);
-    //     stringToDate = this.changeTimezone(stringToDate, storeSetting.timeZone);
-    //     const startDate = new Date(stringToDate);
-    //     startDate.setHours(0, 0, 0, 0);
-    //     const endDate = new Date(startDate);
-    //     endDate.setDate(endDate.getDate() + 1);
-    //     let slots: { time: Date, open: boolean }[] = this.getAllSlots(startDate, endDate, bookingSetting.appointmentSlots);
-    //     const booking = await BookingEntity.createQueryBuilder('booking')
-    //         .leftJoinAndSelect('booking.service', 'service')
-    //         .where('booking.storeId = :storeId', { storeId: staff.storeId })
-    //         .andWhere('booking.isActive = true')
-    //         .andWhere('booking.staffId = :staffId', { staffId: staff.id })
-    //         .andWhere('booking.date between :startDate and :endDate', { startDate, endDate })
-    //         .getMany();
-
-    //     const getWorkingDay = staff.workingHours.find(w => w.day === stringToDate.getDay());
-    //     let workingStart = this.convertStringToTime(getWorkingDay.fromHour, stringToDate, storeSetting.timeZone);
-    //     let workingEnd = this.convertStringToTime(getWorkingDay.toHour, stringToDate, storeSetting.timeZone);
-    //     for (let i = 0; i < slots.length; i++) {
-    //         if (!getWorkingDay.open) slots[i].open = false;
-    //         else if (slots[i].time < workingStart || slots[i].time > workingEnd) slots[i].open = false;
-    //         else if (booking.length > 0 && booking.some(b => {
-    //             const end = new Date(b.date)
-    //             end.setMinutes(end.getMinutes() + b.service.serviceDuration)
-    //             return slots[i].time >= b.date && slots[i].time < end;
-    //         })) {
-    //             slots[i].open = false;
-    //         } else if (staff.breakTimes.some(b => {
-    //             const fromhhmm = b.fromHour.split(':');
-    //             const endhhmm = b.toHour.split(':');
-    //             let start = new Date(slots[i].time);
-    //             start.setHours(+fromhhmm[0], +fromhhmm[1]);
-    //             let end = new Date(slots[i].time);
-    //             end.setHours(+endhhmm[0], +endhhmm[1]);
-    //             return (b.day === slots[i].time.getDay() && slots[i].time >= start && slots[i].time < end)
-    //         })) {
-    //             slots[i].open = false;
-    //         } else if (this.checkIfDayOff(staff.timeOffs, slots[i].time)) {
-    //             slots[i].open = false;
-    //         }
-    //     }
-
-    //     return slots;
-    // }
-
+    /*
+      async getCalendarSlot(date: Date, staffId: number, storeId: number) {
+          const staff = await StaffEntity.findOne({ where: { id: staffId } });
+  
+          const setting = await SettingEntity.findOne({ where: { storeId: staff.storeId } });
+          let stringToDate = new Date(`${date}` as string);
+  
+          stringToDate = this.changeTimezone(stringToDate, setting.timeZone);
+          const startDate = new Date(stringToDate);
+          startDate.setHours(0, 0, 0, 0);
+          const endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + 1);
+          let slots: { time: Date, open: boolean }[] = this.getAllSlots(startDate, endDate, setting.store.bookingSlotSize);
+  
+          const booking = await BookingEntity.createQueryBuilder('booking')
+              .leftJoinAndSelect('booking.service', 'service')
+              .where('booking.storeId = :storeId', { storeId: staff.storeId })
+              .andWhere('booking.isActive = true')
+              .andWhere('booking.staffId = :staffId', { staffId: staff.id })
+              .andWhere('booking.date between :startDate and :endDate', { startDate, endDate })
+              .getMany();
+  
+          const getWorkingDay = staff.workingHours.find(w => w.day === stringToDate.getDay());
+          let workingStart = this.convertStringToTime(getWorkingDay.fromHour, stringToDate, setting.timeZone);
+          let workingEnd = this.convertStringToTime(getWorkingDay.toHour, stringToDate, setting.timeZone);
+          for (let i = 0; i < slots.length; i++) {
+              if (!getWorkingDay.open) slots[i].open = false;
+              // else if (slots[i].time < workingStart || slots[i].time > workingEnd) slots[i].open = false;
+              // else if (booking.length > 0 && booking.some(b => {
+              //     const end = new Date(b.date)
+              //     end.setMinutes(end.getMinutes() + b.service.serviceDuration)
+              //     return slots[i].time >= b.date && slots[i].time < end;
+              // })) {
+              //     slots[i].open = false;
+              // } 
+              else if (staff.breakTimes.some(b => {
+                  const fromhhmm = b.fromHour.split(':');
+                  const endhhmm = b.toHour.split(':');
+                  let start = new Date(slots[i].time);
+                  start.setHours(+fromhhmm[0], +fromhhmm[1]);
+                  let end = new Date(slots[i].time);
+                  end.setHours(+endhhmm[0], +endhhmm[1]);
+                  return (b.day === slots[i].time.getDay() && slots[i].time >= start && slots[i].time < end)
+              })) {
+                  slots[i].open = false;
+              } 
+              else if (this.checkIfDayOff(staff.timeOffs, slots[i].time)) {
+                  slots[i].open = false;
+              }
+          }
+  
+          return slots;
+      }
+      */
 
     // ex: /appointment/booking/slots/?date=06-13-2021&timezone=America/Chicago&staffId=9
-    async getBookingSlots(_query: QueryBookingSlotsDto) {
+    async getBookingSlots(_query: QueryBookingSlotsDto, storeId: number) {
         const { date, timezone, staffId } = _query;
-        const staff = await StaffEntity.findOne({ where: { id: staffId }, relations: ["workingHours"] });
+        const staff = await StaffEntity.findOne({ where: { id: staffId }, relations: ["workingHours"], });
 
-        if (!staff) {
-            throw new NotFoundException(`not found with id ${staffId}`);
-        }
+        if (!staff) throw new NotFoundException(`not found with id ${staffId}`);
 
-        const setting = await SettingEntity.findOne({ where: { storeId: staff.storeId }, relations: ["store"] });
+        const setting = await SettingEntity.findOne({ where: { storeId }, relations: ["store"], });
+
         let stringToDate = new Date(`${this.convertDate(date)}` as string);
-        let pickedday = this.changeTimezone(stringToDate, `${timezone}` as string);
-        const getWorkingDay = staff.workingHours.find(w => w.day === pickedday.getDay());
+        stringToDate.setHours(0, 0, 0, 0);
+
+        const getWorkingDay = staff.workingHours.find((w) => w.day === stringToDate.getDay());
+
         let workingStart = this.convertStringToTime(getWorkingDay.fromHour, stringToDate, setting.timeZone, `${timezone}` as string);
         let workingEnd = this.convertStringToTime(getWorkingDay.toHour, stringToDate, setting.timeZone, `${timezone}` as string);
-        let today = new Date();
 
-        console.log({ workingStart, workingEnd, today })
-        
-        let available: { time: Date, open: boolean }[] = this.getAllSlots(workingStart, workingEnd, setting.store.bookingSlotSize);
-      
-        let bookings = await BookingEntity.createQueryBuilder('booking')
-            // .leftJoinAndSelect('booking.service', 'service')
-            .leftJoinAndSelect("booking.bookingDetail", "bookingDetail")
-            .where('booking.storeId = :storeId AND booking.isActive = false', { storeId: staff.storeId })
-            .andWhere("bookingDetail.staffId = :staffId", { staffId: staff.id })
-            .andWhere('booking.date between :workingStart and :workingEnd', { workingStart, workingEnd })
+        let availables: { time: Date; open: boolean }[] = this.getAllSlots(workingStart, workingEnd, setting.store.bookingSlotSize);
+
+        const bookingDetails = await BookingDetailEntity.createQueryBuilder("bd")
+            .leftJoin("bd.booking", "booking")
+            .select(["bd.id", "bd.startTime", "bd.endTime", "booking.storeId", "booking.id", "booking.date", "booking.status",])
+            .where("bd.staffId = :staffId AND booking.storeId = :storeId", { staffId, storeId, })
+            .andWhere("booking.date between :workingStart and :workingEnd", { workingStart: workingStart.toISOString(), workingEnd: workingEnd.toISOString(), })
             .getMany();
 
-        console.log("bookings", bookings)
-        console.log("******************************")
+        for (let available of availables) {
+            if (!getWorkingDay.open) available.open = false;
+            if (
+                bookingDetails.length > 0 &&
+                bookingDetails.some((bd) => {
+                    let _available = this.formatTime(available.time);
+                    let day = format(bd.booking.date, "yyyy-MM-dd");
 
-        for (let i = 0; i < available.length; i++) {
-            if (!getWorkingDay.open) available[i].open = false;
-            else if (today > available[i].time) available[i].open = false;
-            else if (bookings.length > 0 && bookings.some(b => {
-                const end = new Date(b.date)
-                // end.setMinutes(end.getMinutes() + b.service.serviceDuration)
-                return available[i].time >= b.date && available[i].time < end;
-            })) {
-                available[i].open = false;
-            } 
-            // else if (staff.breakTimes.some(b => {
-            //     const fromhhmm = b.fromHour.split(':');
-            //     const endhhmm = b.toHour.split(':');
-            //     let start = new Date(pickedday);
-            //     start.setHours(+fromhhmm[0], +fromhhmm[1]);
-            //     let end = new Date(pickedday);
-            //     end.setHours(+endhhmm[0], +endhhmm[1]);
-            //     return (b.day === available[i].time.getDay() && available[i].time >= start && available[i].time < end)
-            // })) {
-            //     available[i].open = false;
-            // }
-            //  else if (this.checkIfDayOff(staff.timeOffs, available[i].time)) {
-            //     available[i].open = false;
-            // }
+                    // return (
+                    //     this.compareTwoDateTime(_available) >= this.compareTwoDateTime(`${day} ${bd.startTime}:00`) &&
+                    //     this.compareTwoDateTime(_available) < this.compareTwoDateTime(`${day} ${bd.endTime}:00`)
+                    // );
+
+                    return (
+                        this.compareTwoDateTime(_available) >= this.compareTwoDateTime(`${day} ${bd.startTime}:00`) &&
+                        this.compareTwoDateTime(_available) < this.compareTwoDateTime(`${day} ${this.addMinutes(bd.endTime, staff.breakTime)}:00`)
+                    );
+                })
+            ) {
+                available.open = false;
+            }
         }
 
-        return available;
+        return availables;
+
+        // let arr = [];
+
+        // for (const available of availables) {
+        //     arr.push({
+        //         time: `${format(available.time, "hh:mm:ss a")}`,
+        //         open: available.open
+        //     })
+        // }
+
+        // return arr;
+
+        // return { bookingDetails, array, availables }
+        // return { bookingDetails, availables };
+
+
+        // for (let i = 0; i < available.length; i++) {
+        //     if (!getWorkingDay.open) available[i].open = false;
+        //     else if (today > available[i].time) available[i].open = false;
+        //     else if (bookings.length > 0 && bookings.some(b => {
+        //         const end = new Date(b.date)
+        //         // end.setMinutes(end.getMinutes() + b.service.serviceDuration)
+        //         return available[i].time >= b.date && available[i].time < end;
+        //     })) {
+        //         available[i].open = false;
+        //     }
+        //     // else if (staff.breakTimes.some(b => {
+        //     //     const fromhhmm = b.fromHour.split(':');
+        //     //     const endhhmm = b.toHour.split(':');
+        //     //     let start = new Date(pickedday);
+        //     //     start.setHours(+fromhhmm[0], +fromhhmm[1]);
+        //     //     let end = new Date(pickedday);
+        //     //     end.setHours(+endhhmm[0], +endhhmm[1]);
+        //     //     return (b.day === available[i].time.getDay() && available[i].time >= start && available[i].time < end)
+        //     // })) {
+        //     //     available[i].open = false;
+        //     // }
+        //     //  else if (this.checkIfDayOff(staff.timeOffs, available[i].time)) {
+        //     //     available[i].open = false;
+        //     // }
+        // }
+
+        // return available;
     }
 
+    compareTwoDateTime(date: Date | string): string {
+        if (date) {
+            return format(new Date(date), "hh:mm:ss a");
+        }
+        if (this.typeOf(date) === "String") {
+            return format(new Date(date), "hh:mm:ss a");
+        }
+        return "";
+    }
 
+    typeOf(value): string {
+        return Object.prototype.toString.call(value).slice(8, -1);
+    }
 
     checkIfDayOff(timeOffs: TimeOffEntity[], pickedDate: Date) {
         for (let i = 0; i < timeOffs.length; i++) {
@@ -467,15 +548,19 @@ export class BookingService {
             let start = new Date(timeoff.startDate);
             if (end < pickedDate) return false;
             if (timeoff.repeat) {
-                if (timeoff.repeat == 'daily') {
+                if (timeoff.repeat == "daily") {
                     if (pickedDate >= timeoff.startDate && pickedDate <= end) {
                         while (start < end) {
-                            if ((start.getDate() === pickedDate.getDate()) && (start.getMonth() === pickedDate.getMonth()) && (start.getFullYear() === pickedDate.getFullYear())) {
+                            if (
+                                start.getDate() === pickedDate.getDate() &&
+                                start.getMonth() === pickedDate.getMonth() &&
+                                start.getFullYear() === pickedDate.getFullYear()
+                            ) {
                                 if (timeoff.allDay) {
                                     return true;
                                 } else {
                                     const dayEnd = new Date(start);
-                                    dayEnd.setMinutes(dayEnd.getMinutes() + timeoff.duration)
+                                    dayEnd.setMinutes(dayEnd.getMinutes() + timeoff.duration);
                                     if (pickedDate > start && pickedDate < dayEnd) {
                                         return true;
                                     }
@@ -483,9 +568,8 @@ export class BookingService {
                             }
                             start.setDate(start.getDate() + timeoff.repeatEvery);
                         }
-
                     }
-                } else if (timeoff.repeat == 'weekly') {
+                } else if (timeoff.repeat == "weekly") {
                     const timeOff = timeoff.repeatOn.map(Number);
                     if (timeOff.includes(pickedDate.getDay())) {
                         if (pickedDate >= start && pickedDate <= end) {
@@ -495,7 +579,7 @@ export class BookingService {
                                     return true;
                                 } else {
                                     const dayEnd = new Date(nextDay);
-                                    dayEnd.setMinutes(dayEnd.getMinutes() + timeoff.duration)
+                                    dayEnd.setMinutes(dayEnd.getMinutes() + timeoff.duration);
                                     if (pickedDate > nextDay && pickedDate < dayEnd) {
                                         return true;
                                     }
@@ -503,15 +587,22 @@ export class BookingService {
                             }
                         }
                     }
-                } else if (timeoff.repeat == 'monthly') {
-                    if (pickedDate >= timeoff.startDate && pickedDate <= timeoff.endDate) {
+                } else if (timeoff.repeat == "monthly") {
+                    if (
+                        pickedDate >= timeoff.startDate &&
+                        pickedDate <= timeoff.endDate
+                    ) {
                         while (start < timeoff.endDate) {
-                            if ((start.getDate() === pickedDate.getDate()) && (start.getMonth() === pickedDate.getMonth()) && (start.getFullYear() === pickedDate.getFullYear())) {
+                            if (
+                                start.getDate() === pickedDate.getDate() &&
+                                start.getMonth() === pickedDate.getMonth() &&
+                                start.getFullYear() === pickedDate.getFullYear()
+                            ) {
                                 if (timeoff.allDay) {
                                     return true;
                                 } else {
                                     const dayEnd = new Date(start);
-                                    dayEnd.setMinutes(dayEnd.getMinutes() + timeoff.duration)
+                                    dayEnd.setMinutes(dayEnd.getMinutes() + timeoff.duration);
                                     if (pickedDate > start && pickedDate < dayEnd) {
                                         return true;
                                     }
@@ -537,6 +628,9 @@ export class BookingService {
         return `${MM}-${dd}-${YYYY}`;
     }
 
+    formatTime(date: Date) {
+        return format(date, "yyyy-MM-dd hh:mm:ss a");
+    }
 
     getAllSlots(fromDate: Date, toDate: Date, interval: number) {
         let arr = [];
@@ -548,8 +642,13 @@ export class BookingService {
         return arr;
     }
 
-    convertStringToTime(time: string, pickDate: Date, storeTimezone: string, customerTimezone: string = '') {
-        const [hh, mm] = time.split(':');
+    convertStringToTime(
+        time: string,
+        pickDate: Date,
+        storeTimezone: string,
+        customerTimezone: string = ""
+    ) {
+        const [hh, mm] = time.split(":");
         //change timezone to store timezone
         let result = this.changeTimezone(pickDate, storeTimezone);
         result.setHours(+hh, +mm);
@@ -573,12 +672,13 @@ export class BookingService {
     }
 
     getUser(userId: number) {
-        return UserEntity.createQueryBuilder('user').where("user.id = :userId", { userId }).getOne();
+        return UserEntity.createQueryBuilder("user")
+            .where("user.id = :userId", { userId })
+            .getOne();
     }
 
     // async getHistoryStatus(_query: QueryHistoryByDateDto, storeId: number) {
     //     const { start, end, staffId } = _query;
-
     //     let query = BookingEntity
     //         .createQueryBuilder('booking')
     //         .leftJoin('booking.service', 'service', 'service.isService = true')

@@ -13,7 +13,7 @@ export class BookingDetailEntity extends BaseEntity {
   startTime: string;
 
   @Column({ type: "text", name: "end_time" })
-  endTime: Date;
+  endTime: string;
 
   @ManyToOne(() => BookingEntity, { onDelete: "CASCADE", onUpdate: "CASCADE" })
   @JoinColumn({ name: 'bookingId' })

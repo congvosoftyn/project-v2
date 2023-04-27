@@ -37,7 +37,7 @@ export class UserController {
   }
 
   @Post('refreshToken')
-  @UsePipes(new ValidationPipe())
+  // @UsePipes(new ValidationPipe())
   refreshToken(@Body() _postData: PostDataDto) {
     return this.userService.refreshToken(_postData);
   }
