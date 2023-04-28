@@ -16,8 +16,10 @@ export class DemoController {
   }
 
   @Get()
-  findAll(@Query() query: QueryDemoDto) {
-    return this.demoService.findAll(query);
+  findAll(){
+    return this.demoService.findOverlapping();
+  // findAll(@Query() query: QueryDemoDto) {
+    // return this.demoService.findAll(query);
   }
 
   @Get(':id')

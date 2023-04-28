@@ -8,14 +8,7 @@ import { TimeOffEntity } from 'src/entities/TimeOff.entity';
 export class TimeOffsService {
   async create(createTimeOffDto: CreateTimeOffDto) {
     const staff = await StaffEntity.findOne({ where: { id: createTimeOffDto.staffId } });
-    return TimeOffEntity.save(<TimeOffEntity>{
-      allDay: createTimeOffDto.allDay,
-      note: createTimeOffDto.note,
-      repeat: createTimeOffDto.repeat,
-      repeatEvery: createTimeOffDto.repeatEvery,
-      repeatOn: createTimeOffDto.repeatOn,
-      staff
-    })
+    return TimeOffEntity.save(<TimeOffEntity>{ startDate: createTimeOffDto.startDate, endDate: createTimeOffDto.endDate, staff })
   }
 
   findAll(staffId: number) {

@@ -10,4 +10,10 @@ export class DemoEntity extends BaseEntity {
 
     @Column("datetime")
     date: Date;
+
+    @Column("datetime", { name: "start_date" })
+    startDate: Date;
+
+    @Column("datetime", { name: "end_date" })
+    endDate: Date;
 }
