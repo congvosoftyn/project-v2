@@ -268,44 +268,44 @@ export class StaffService {
     }
   }
 
-  convertReponseBooking(booking: BookingEntity) {
-    let services = []
-    let packages = []
+  // convertReponseBooking(booking: BookingEntity) {
+  //   let services = []
+  //   let packages = []
 
-    booking?.bookingDetail?.forEach((bI) => {
-      if (bI.serviceId) {
-        services.push({ ...bI.service, bookingInfoId: bI.id, deleted: bI.deleted, staffId: bI.staffId, staff: bI.staff })
-      }
-      if (bI.packageId) {
-        packages.push({ ...bI.packages, bookingInfoId: bI.id, deleted: bI.deleted, staffId: bI.staffId, staff: bI.staff })
-      }
-    })
+  //   booking?.bookingDetail?.forEach((bI) => {
+  //     if (bI.serviceId) {
+  //       services.push({ ...bI.service, bookingInfoId: bI.id, deleted: bI.deleted, staffId: bI.staffId, staff: bI.staff })
+  //     }
+  //     if (bI.packageId) {
+  //       packages.push({ ...bI.packages, bookingInfoId: bI.id, deleted: bI.deleted, staffId: bI.staffId, staff: bI.staff })
+  //     }
+  //   })
 
-    packages = packages.map((_package) => {
-      return ({
-        ..._package,
-        duration: _package?.services?.reduce((a, b) => a + b.serviceDuration, 0)
-      })
-    })
+  //   packages = packages.map((_package) => {
+  //     return ({
+  //       ..._package,
+  //       duration: _package?.services?.reduce((a, b) => a + b.serviceDuration, 0)
+  //     })
+  //   })
 
-    let _booking = {
-      ...booking,
-      bookingInfo: undefined,
-      services: services,
-      packages: packages
-    }
+  //   let _booking = {
+  //     ...booking,
+  //     bookingInfo: undefined,
+  //     services: services,
+  //     packages: packages
+  //   }
 
-    return _booking;
-  }
+  //   return _booking;
+  // }
 
   convertDataBookingByStaff(listBooking: BookingEntity[], staff: StaffEntity) {
     let _staff = staff as any;
     let _bookings = [];
 
     listBooking?.forEach((booking) => {
-      booking?.bookingDetail?.forEach((bInfo) => {
+      booking?.bookingDetails?.forEach((bInfo) => {
         if (bInfo.staffId === _staff.id) {
-          let _booking = { ...booking, bookingInfo: booking?.bookingDetail?.filter((bI) => bI.staffId === staff.id) }
+          let _booking = { ...booking, bookingInfo: booking?.bookingDetails?.filter((bI) => bI.staffId === staff.id) }
           _bookings.push(_booking)
         }
       })

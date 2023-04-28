@@ -1,23 +1,32 @@
 import { PartialType } from "@nestjs/swagger";
 import { AppointmentDto, BodyServiceAndPackageBooking } from "./create-booking.dto";
-import {AppointmentBookingStatus} from "../../../entities/Booking.entity";
+import { AppointmentBookingStatus } from "../../../entities/Booking.entity";
 
-class UpdateService extends PartialType(BodyServiceAndPackageBooking) {
-    delete: boolean = true;
-    bookingInfoId: number;
+export class UpdateServiceAndPackageBooking {
+    id: number;
+    staffId?: number = null;
+    startTime: string;
+    duration: number;
+    price: number;
 }
 
-class UpdatePackage extends PartialType(BodyServiceAndPackageBooking) {
-    delete: boolean = true;
-    bookingInfoId: number;
-    price: number;
-    staffId: number;
+export class DetailBooking {
     id: number;
+    bookingId: number;
+    staffId: number;
+    serviceId: number;
+    packageId?: number;
+    deleted: boolean = false;
+    startTime: string;
+    endTime: string;
+    duration: number;
+    price: number;
 }
 
 export class UpdateBookingDto extends PartialType(AppointmentDto) {
-    packages?: UpdatePackage[];
-    services?: UpdateService[];
+    packages?: UpdateServiceAndPackageBooking[];
+    services?: UpdateServiceAndPackageBooking[];
+    bookingDetails: DetailBooking[];
 }
 
 export class CancelBookingDto {

@@ -11,7 +11,7 @@ import { BookingDetailEntity } from 'src/entities/BookingDetail.entity';
   imports: [
     EmailModule,
     NotifyModule,
-    TypeOrmModule.forFeature([BookingDetailEntity])
+    TypeOrmModule.forFeature([BookingDetailEntity]),
   ],
   providers: [BookingService, BookingGateway],
   controllers: [BookingController],

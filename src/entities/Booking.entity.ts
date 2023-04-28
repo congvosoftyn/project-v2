@@ -27,7 +27,7 @@ export class BookingEntity extends BaseEntity {
   date: Date;
 
   @OneToMany(() => BookingDetailEntity, info => info.booking,{onDelete:"CASCADE",onUpdate:"CASCADE"})
-  bookingDetail: BookingDetailEntity[];
+  bookingDetails: BookingDetailEntity[];
 
   @Column({ default: AppointmentBookingStatus.booked }) // danger, warning, ok
   status: string;
@@ -56,7 +56,4 @@ export class BookingEntity extends BaseEntity {
 
   @Column({ default: 0 })
   duration: number;
-
-  @Column({ nullable: true })
-  reason: string; // reason cancel booking
 }

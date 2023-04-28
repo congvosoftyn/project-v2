@@ -38,7 +38,7 @@ export class BookingDetailEntity extends BaseEntity {
 
   @ManyToOne(() => PackageEntity, { onDelete: "CASCADE", onUpdate: "CASCADE", nullable: true })
   @JoinColumn({ name: 'packageId' })
-  packages: PackageEntity;
+  package: PackageEntity;
 
   @Column({ type: 'int', nullable: true })
   packageId: number;

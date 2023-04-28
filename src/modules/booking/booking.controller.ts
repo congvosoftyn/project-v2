@@ -5,7 +5,6 @@ import JwtAuthenticationGuard from 'src/shared/guards/jwtAuthenticationGuard';
 import { ValidationPipe } from 'src/shared/pipes/validation.pipe';
 import { BookingService } from './booking.service';
 import { CreateAppointmentDto } from './dto/create-booking.dto';
-import { QueryHistoryByDateDto } from './dto/QueryHistoryByDate.dto';
 import { CancelBookingDto, UpdateBookingDto } from './dto/update-booking.dto';
 import { QueryBookingSlotsDto } from './dto/QueryBookingSlots.dto';
 
@@ -14,7 +13,7 @@ import { QueryBookingSlotsDto } from './dto/QueryBookingSlots.dto';
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthenticationGuard)
 export class BookingController {
-    constructor(private readonly bookingService: BookingService) { }
+    constructor(private readonly bookingService: BookingService,) { }
 
     @Get()
     async getAppointments(@User('storeId') storeId: number) {
@@ -32,10 +31,10 @@ export class BookingController {
         return this.bookingService.createBookAppointment(booking, storeId);
     }
 
-    // @Put('/:id')
-    // async updateAppointment(@Param('id', ParseIntPipe) id: string, @Body() booking: UpdateBookingDto, @User('userId') userId: number) {
-    //     return this.bookingService.updateAppointment(+id, booking, userId);
-    // }
+    @Put('/:bookingId')
+    async updateAppointment(@Param('bookingId', ParseIntPipe) bookingId: string, @Body() booking: UpdateBookingDto, @User('storeId') storeId: number) {
+        return this.bookingService.updateAppointment(+bookingId, booking, storeId);
+    }
 
     @Patch('/:id')
     async updateAppointmentStatus(@Param('id', ParseIntPipe) id: string, @Body() booking: CancelBookingDto, @User('userId') userId: number) {
@@ -48,8 +47,8 @@ export class BookingController {
     }
 
     @Get("/:id")
-    getBookingInfo(@Param('id', ParseIntPipe) id: string) {
-        return this.bookingService.findByBooking(+id)
+    getBookingInfo(@Param('id', ParseIntPipe) id: string, @User('storeId') storeId: number) {
+        return this.bookingService.findByBooking(+id, storeId);
     }
 
     // @Get('/calendar-slots')
