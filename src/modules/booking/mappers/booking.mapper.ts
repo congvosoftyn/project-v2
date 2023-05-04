@@ -18,7 +18,7 @@ export class BookingMapper {
             storeId: booking.storeId,
             isCheckIn: booking.isCheckIn,
             duration: booking.duration,
-            reason: booking.reason,
+            // reason: booking.reason,
         }
 
         let bookingDetails: IDetail[] = [];

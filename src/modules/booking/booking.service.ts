@@ -52,15 +52,13 @@ export class BookingService {
 
         if (bodyServices.length > 0) {
             for (const service of bodyServices) {
-                if (service.id !== 0) {
-                    duration += service.duration;
-                    listBookingDetailsDto.push({
-                        serviceId: service.id,
-                        duration: service.duration,
-                        packageId: null,
-                        price: service.price,
-                    });
-                }
+                duration += service.duration;
+                listBookingDetailsDto.push({
+                    serviceId: service.id,
+                    duration: service.duration,
+                    packageId: null,
+                    price: service.price,
+                });
             }
         }
 
@@ -195,13 +193,13 @@ export class BookingService {
         if (bodyServices.length > 0) {
             let duration = 0;
             for (const service of bodyServices) {
-                    duration += service.duration;
-                    listBookingDetailsDto.push({
-                        serviceId: service.id,
-                        duration: service.duration,
-                        packageId: null,
-                        price: service.price,
-                    });
+                duration += service.duration;
+                listBookingDetailsDto.push(<BookingDetailEntity>{
+                    serviceId: service.id,
+                    duration: service.duration,
+                    packageId: null,
+                    price: service.price,
+                });
             }
         }
 
@@ -216,7 +214,6 @@ export class BookingService {
                     serviceId: aPackage.serviceId,
                     duration: aPackage.duration,
                     price: aPackage.price,
-                    
                 });
             }
         }
@@ -228,24 +225,26 @@ export class BookingService {
                 .execute();
         }
 
-        // for (const bookingDetail of listBookingDetailsDto) {
-        //     // let endTime = this.addMinutes(startTime, bookingDetail.duration);
-        //     // bookingDetails.push(<BookingDetailEntity><unknown>{
-        //     //     startTime: startTime,
-        //     //     endTime: endTime,
-        //     //     booking,
-        //     //     serviceId: bookingDetail.serviceId,
-        //     //     staffId: bodyBooking.staffId,
-        //     //     packageId: bookingDetail.packageId,
-        //     //     price: bookingDetail.price,
-        //     //     duration: bookingDetail.price,
-        //     // });
-        //     // startTime = endTime;
-        // }
+        let startTime = bodyUpdateBooking.startTime;
+        let bookingDetails: BookingDetailEntity[] = [];
+
+        for (const bookingDetail of listBookingDetailsDto) {
+            let endTime = this.addMinutes(startTime, bookingDetail.duration);
+            bookingDetails.push(<BookingDetailEntity><unknown>{
+                startTime: startTime,
+                endTime: endTime,
+                booking,
+                serviceId: bookingDetail.serviceId,
+                staffId: bodyUpdateBooking.staffId,
+                packageId: bookingDetail.packageId,
+                price: bookingDetail.price,
+                duration: bookingDetail.price,
+            });
+            startTime = endTime;
+        }
 
         BookingDetailEntity.save(bookingDetailsExist);
-        // BookingDetailEntity.save(bookingDetailsExist);
-
+        BookingDetailEntity.save(bookingDetails);
 
         let bookingUpdate = {
             ...booking,

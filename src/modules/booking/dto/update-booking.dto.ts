@@ -4,8 +4,6 @@ import { AppointmentBookingStatus } from "../../../entities/Booking.entity";
 
 export class UpdateServiceAndPackageBooking {
     id: number;
-    staffId?: number = null;
-    startTime: string;
     duration: number;
     price: number;
 }
@@ -27,6 +25,8 @@ export class UpdateBookingDto extends PartialType(AppointmentDto) {
     packages?: UpdateServiceAndPackageBooking[];
     services?: UpdateServiceAndPackageBooking[];
     bookingDetails: DetailBooking[];
+    staffId?: number = null;
+    startTime: string;
 }
 
 export class CancelBookingDto {
