@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { ITimeOverlap } from "./interfaces/time-overlap.interface";
 import { ServiceEntity } from "src/entities/service.entity";
 import { CustomerEntity } from "src/entities/Customer.entity";
+import { DrapBookingDetailDto } from "./dto/drap-booking-detail.dto";
 
 @Injectable()
 export class BookingService {
@@ -493,5 +494,46 @@ export class BookingService {
         }
 
         return query.getMany();
+    }
+
+    async updateDragBookingDetail(bookingId: number, body: DrapBookingDetailDto, storeId: number) {
+        const endTime = this.addMinutes(body.startTime, body.duration);
+
+        let bookingDetail = await BookingDetailEntity.createQueryBuilder('bd')
+            .leftJoin("bd.booking", "booking")
+            .leftJoin("bd.service", "service")
+            .addSelect(["service.id", "service.name", "service.duration"])
+            .where("booking.id = :id AND booking.storeId = :storeId", { id: bookingId, storeId })
+            .andWhere("bd.id = :id AND bd.staffId = :staffId ", { id: body.id, staffId: body.staffId })
+            .andWhere("bd.startTime >= :startTime", { startTime: body.startTime })
+            .getOne();
+
+        if (!bookingDetail) throw new NotFoundException("Not found Booking Detail!");
+        const staff = await StaffEntity.findOne({ where: { id: body.staffId, storeId } });
+
+        let checkTimeBookingDetailsExist = await BookingDetailEntity.createQueryBuilder('bd')
+            .leftJoin("bd.booking", "booking")
+            .leftJoin("bd.service", "service")
+            .select(["bd.id", "bd.startTime", "bd.endTime"])
+            .andWhere("bd.staffId = :staffId ", { staffId: body.staffId })
+            .andWhere("bd.startTime >= :startTime", { startTime: body.startTime })
+            .getMany();
+
+        let checkBookingSlotOverlaps = [];
+
+        for (const bookingDetail of checkTimeBookingDetailsExist) {
+            if (this.overlapping(
+                { start: body.startTime, end: endTime },
+                { start: bookingDetail.startTime, end: bookingDetail.endTime }
+            )) {
+                checkBookingSlotOverlaps.push({ start: bookingDetail.startTime, end: bookingDetail.endTime });
+            }
+        }
+
+        if (checkBookingSlotOverlaps.length > 0) {
+            return;
+        }
+
+        return BookingDetailEntity.save(<BookingDetailEntity>{ ...bookingDetail, staff, startTime: body.startTime, endTime })
     }
 }

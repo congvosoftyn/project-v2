@@ -7,6 +7,7 @@ import { BookingService } from './booking.service';
 import { CreateAppointmentDto } from './dto/create-booking.dto';
 import { CancelBookingDto, UpdateBookingDto } from './dto/update-booking.dto';
 import { QueryBookingSlotsDto } from './dto/QueryBookingSlots.dto';
+import { DrapBookingDetailDto } from './dto/drap-booking-detail.dto';
 
 @Controller('bookings')
 @ApiTags('bookings')
@@ -16,43 +17,48 @@ export class BookingController {
     constructor(private readonly bookingService: BookingService,) { }
 
     @Get()
-    async getAppointments(@User('storeId') storeId: number) {
+    getAppointments(@User('storeId') storeId: number) {
         return this.bookingService.getAppointments(storeId);
     }
 
     @Get('/slots')
-    async getBookingSlots(@Query() query: QueryBookingSlotsDto, @User('storeId') storeId: number) {
+    getBookingSlots(@Query() query: QueryBookingSlotsDto, @User('storeId') storeId: number) {
         return this.bookingService.getBookingSlots(query, storeId);
     }
 
     @Post()
     @UsePipes(new ValidationPipe())
-    async createBookAppointment(@Body() booking: CreateAppointmentDto, @User('storeId') storeId: number) {
+    createBookAppointment(@Body() booking: CreateAppointmentDto, @User('storeId') storeId: number) {
         return this.bookingService.createBookAppointment(booking, storeId);
     }
 
     @Get("/:serviceId/staffs")
     getStaffsByService(@Param("serviceId") serviceId: number, @User('storeId') storeId: number) {
-        return this.bookingService.getStaffsByService(serviceId, null, storeId);
+        return this.bookingService.getStaffsByService(+serviceId, null, storeId);
     }
 
     @Get("/:staffId/services")
     getServicesByStaff(@Param("staffId") staffId: number, @User('storeId') storeId: number) {
-        return this.bookingService.getStaffsByService(null, staffId, storeId);
+        return this.bookingService.getStaffsByService(null, +staffId, storeId);
     }
 
     @Put('/:bookingId')
-    async updateAppointment(@Param('bookingId', ParseIntPipe) bookingId: string, @Body() booking: UpdateBookingDto, @User('storeId') storeId: number) {
+    updateAppointment(@Param('bookingId', ParseIntPipe) bookingId: string, @Body() booking: UpdateBookingDto, @User('storeId') storeId: number) {
         return this.bookingService.updateAppointment(+bookingId, booking, storeId);
     }
 
+    @Put("/:bookingId/drag-booking-detail")
+    updateDragBookingDetail(@Param('bookingId', ParseIntPipe) bookingId: string, @Body() bookingDetail: DrapBookingDetailDto, @User('storeId') storeId: number) {
+        return this.bookingService.updateDragBookingDetail(+bookingId, bookingDetail, storeId)
+    }
+
     @Patch('/:id')
-    async updateAppointmentStatus(@Param('id', ParseIntPipe) id: string, @Body() booking: CancelBookingDto, @User('userId') userId: number) {
+    updateAppointmentStatus(@Param('id', ParseIntPipe) id: string, @Body() booking: CancelBookingDto, @User('userId') userId: number) {
         return this.bookingService.cancelAppointment(+id, booking, userId);
     }
 
     @Delete('/:id')
-    async deleteAppointment(@Param('id') id: number, @User('storeId') storeId: number, @User('userId') userId: number) {
+    deleteAppointment(@Param('id') id: number, @User('storeId') storeId: number, @User('userId') userId: number) {
         return this.bookingService.deleteAppointment(id, storeId, userId);
     }
 
@@ -62,7 +68,7 @@ export class BookingController {
     }
 
     // @Get('/calendar-slots')
-    // async getCalendarSlot(@Query('date') date: Date, @Query('staffId') staffId: number, @User('storeId') storeId: number) {
+    //  getCalendarSlot(@Query('date') date: Date, @Query('staffId') staffId: number, @User('storeId') storeId: number) {
     //     return this.bookingService.getCalendarSlot(date, staffId,storeId);
     // }
 }
