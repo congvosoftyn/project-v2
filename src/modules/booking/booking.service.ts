@@ -1,10 +1,10 @@
 import { UserEntity } from "src/entities/User.entity";
-import { CancelBookingDto, UpdateBookingDto, UpdateServiceAndPackageBooking } from "./dto/update-booking.dto";
+import { CancelBookingDto, UpdateBookingDto } from "./dto/update-booking.dto";
 import { forwardRef, Inject, Injectable, NotFoundException, } from "@nestjs/common";
 import { StaffEntity } from "src/entities/Staff.entity";
 import { EmailService } from "src/modules/email/email.service";
 import { BookingGateway } from "./booking.gateway";
-import { CreateAppointmentDto, BodyServiceAndPackageBooking, } from "./dto/create-booking.dto";
+import { CreateAppointmentDto, } from "./dto/create-booking.dto";
 import { NotifyService } from "src/modules/notify/notify.service";
 import { BookingEntity } from "src/entities/Booking.entity";
 import { BookingDetailEntity } from "src/entities/BookingDetail.entity";
@@ -15,6 +15,9 @@ import { IListBookingDetail } from "./interfaces/list-booking-detail.interface";
 import { PackageEntity } from "src/entities/Package.entity";
 import { In } from "typeorm";
 import { format } from "date-fns";
+import { ITimeOverlap } from "./interfaces/time-overlap.interface";
+import { ServiceEntity } from "src/entities/service.entity";
+import { CustomerEntity } from "src/entities/Customer.entity";
 
 @Injectable()
 export class BookingService {
@@ -26,82 +29,126 @@ export class BookingService {
     ) { }
 
     async getAppointments(storeId: number) {
-        let bookings = await BookingEntity.createQueryBuilder("booking")
+        return BookingEntity.createQueryBuilder("booking")
             .leftJoinAndSelect("booking.customer", "customer")
+            .leftJoinAndSelect("booking.bookingDetails", "bookingDetails")
+            .leftJoin("bookingDetails.service", "service")
+            .leftJoin("bookingDetails.package", "package")
+            .leftJoin("bookingDetails.staff", "staff")
+            .addSelect([
+                "service.id", "service.name", "service.price", "service.duration",
+                "package.id", "package.name", "package.price", "package.duration",
+                "staff.id", "staff.name"
+            ])
             .orderBy({ date: "ASC" })
             .where("booking.storeId = :storeId", { storeId })
             .andWhere("booking.date >= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)")
-            .andWhere("booking.isActive = true")
+            .andWhere("booking.isActive = false")
             .getMany();
 
-        let _bookings = [];
+        // let _bookings = [];
 
-        // for (let booking of bookings) {
-        //     _bookings.push(this.convertReponseBooking(booking))
-        // }
+        // // for (let booking of bookings) {
+        // //     _bookings.push(this.convertReponseBooking(booking))
+        // // }
 
-        return bookings;
+        // return bookings;
     }
 
     async createBookAppointment(bodyBooking: CreateAppointmentDto, storeId: number) {
-        const bodyServices: BodyServiceAndPackageBooking[] = bodyBooking.services;
-        const bodyPackages: BodyServiceAndPackageBooking[] = bodyBooking.packages;
+        const serviceIds: number[] = bodyBooking.serviceIds;
+        const packageIds: number[] = bodyBooking.packageIds;
         let duration = bodyBooking.extraTime;
+        let startTime: string = bodyBooking.startTime;
+        const customer = await CustomerEntity.findOne({ where: { id: bodyBooking.customerId } });
+        const staff = await StaffEntity.findOne({ where: { id: bodyBooking.staffId } });
 
         let listBookingDetailsDto: IListBookingDetail[] = [];
 
-        if (bodyServices.length > 0) {
-            for (const service of bodyServices) {
+        if (serviceIds && serviceIds.length > 0) {
+            const services = await ServiceEntity.find({ where: { id: In(serviceIds) } });
+            for (const service of services) {
+                let endTime = this.addMinutes(startTime, service.duration);
                 duration += service.duration;
                 listBookingDetailsDto.push({
                     serviceId: service.id,
                     duration: service.duration,
                     packageId: null,
                     price: service.price,
+                    startTime: startTime,
+                    endTime: endTime
                 });
+                startTime = endTime;
             }
         }
 
-        if (bodyPackages.length > 0) {
-            const ids = bodyPackages.map((pack) => pack.id);
-            const packages = await this.findPackageByIds(ids);
+        if (packageIds && packageIds.length > 0) {
+            const packages: PackageEntity[] = await this.findPackageByIds(packageIds);
             for (const aPackage of packages) {
-                duration += aPackage.duration;
-                listBookingDetailsDto.push({
-                    packageId: aPackage.packageId,
-                    serviceId: aPackage.serviceId,
-                    duration: aPackage.duration,
-                    price: aPackage.price,
-                });
+                for (const service of aPackage.services) {
+                    let endTime = this.addMinutes(startTime, service.duration);
+                    duration += service.duration;
+                    listBookingDetailsDto.push({
+                        serviceId: service.id,
+                        duration: service.duration,
+                        packageId: aPackage.id,
+                        price: service.price,
+                        startTime: startTime,
+                        endTime: endTime
+                    });
+                    startTime = endTime;
+                }
             }
         }
 
-        const booking = await BookingEntity.save(<BookingEntity>{
-            customerId: bodyBooking.customerId,
+        let bookingDetailsExist = await BookingDetailEntity.createQueryBuilder("bd")
+            .leftJoin("bd.booking", "booking")
+            .select(["bd.id", "bd.startTime", "bd.endTime"])
+            .where("booking.storeId = :storeId", { storeId })
+            .andWhere("booking.date = :date", { date: format(new Date(bodyBooking.date), "yyyy-MM-dd") })
+            .andWhere("bd.staffId = :staffId", { staffId: bodyBooking.staffId })
+            .andWhere("bd.startTime >= :startTime", { startTime: bodyBooking.startTime })
+            .getMany();
+
+        let convertBookingDetailsExist = bookingDetailsExist.map((bookingDetail) => ({ ...bookingDetail, endTime: this.addMinutes(bookingDetail.endTime, staff.breakTime) }))
+
+        let checkBookingSlotOverlaps = [];
+
+        for (const bookingDetailsDto of listBookingDetailsDto) {
+            for (const bookingDetail of convertBookingDetailsExist) {
+                if (this.overlapping(
+                    { start: bookingDetailsDto.startTime, end: bookingDetailsDto.endTime },
+                    { start: bookingDetail.startTime, end: bookingDetail.endTime }
+                )) {
+                    checkBookingSlotOverlaps.push(bookingDetailsDto)
+                }
+            }
+        }
+
+        if (checkBookingSlotOverlaps.length > 0) {
+            return;
+        }
+
+        const booking = await BookingEntity.save(<BookingEntity><unknown>{
+            customer, storeId, duration,
+            date: format(new Date(bodyBooking.date), "yyyy-MM-dd"),
+            status: bodyBooking.status,
             color: bodyBooking.color,
             note: bodyBooking.note,
-            storeId: storeId,
-            duration,
-            date: bodyBooking.date,
         });
 
         let bookingDetails: BookingDetailEntity[] = [];
 
-        let startTime: string = bodyBooking.startTime;
-
         for (const bookingDetail of listBookingDetailsDto) {
-            let endTime = this.addMinutes(startTime, bookingDetail.duration);
-            bookingDetails.push(<BookingDetailEntity><unknown>{
-                startTime: startTime,
-                endTime: endTime,
-                booking,
+            bookingDetails.push(<BookingDetailEntity>{
+                startTime: bookingDetail.startTime,
+                endTime: bookingDetail.endTime,
+                booking, staff,
                 serviceId: bookingDetail.serviceId,
-                staffId: bodyBooking.staffId,
                 packageId: bookingDetail.packageId,
                 price: bookingDetail.price,
-                duration: bookingDetail.price,
+                duration: bookingDetail.duration,
             });
-            startTime = endTime;
         }
 
         BookingDetailEntity.save(bookingDetails);
@@ -117,9 +164,14 @@ export class BookingService {
 
         if (Number(minute) >= 60) {
             hour += 1;
-            minute = (
-                Number(minute) - 60 === 0 ? "00" : Number(minute) - 60
-            ).toString();
+            let _minute = Number(minute) - 60;
+            if (_minute === 0) {
+                minute = "00";
+            } else if (_minute > 0 && _minute < 10) {
+                minute = `0${_minute}`
+            } else {
+                minute = _minute.toString();
+            }
         }
 
         return `${hour}:${minute}`;
@@ -164,96 +216,96 @@ export class BookingService {
     }
 
     async updateAppointment(bookingId: number, bodyUpdateBooking: UpdateBookingDto, storeId: number) {
-        let bodyServices: UpdateServiceAndPackageBooking[] = bodyUpdateBooking.services;
-        let bodyPackages: UpdateServiceAndPackageBooking[] = bodyUpdateBooking.packages;
-        let booking = await this.findByBooking(bookingId, storeId);
+        // let bodyServices: UpdateServiceAndPackageBooking[] = bodyUpdateBooking.services;
+        // let bodyPackages: UpdateServiceAndPackageBooking[] = bodyUpdateBooking.packages;
+        // let booking = await this.findByBooking(bookingId, storeId);
 
-        let idsDeleteBookingDetail = [];
-        let bookingDetailsExist = [];
-        let listBookingDetailsDto: IListBookingDetail[] = [];
+        // let idsDeleteBookingDetail = [];
+        // let bookingDetailsExist = [];
+        // let listBookingDetailsDto: IListBookingDetail[] = [];
 
-        for (const detail of bodyUpdateBooking.bookingDetails) {
-            if (detail.deleted) {
-                idsDeleteBookingDetail.push(detail.id);
-            } else {
-                bookingDetailsExist.push(<BookingDetailEntity>{
-                    id: detail.id,
-                    startTime: detail.startTime,
-                    endTime: detail.endTime,
-                    booking,
-                    serviceId: detail.serviceId,
-                    staffId: detail.staffId,
-                    packageId: detail.packageId,
-                    price: detail.price,
-                    duration: detail.duration,
-                })
-            }
-        }
+        // for (const detail of bodyUpdateBooking.bookingDetails) {
+        //     if (detail.deleted) {
+        //         idsDeleteBookingDetail.push(detail.id);
+        //     } else {
+        //         bookingDetailsExist.push(<BookingDetailEntity>{
+        //             id: detail.id,
+        //             startTime: detail.startTime,
+        //             endTime: detail.endTime,
+        //             booking,
+        //             serviceId: detail.serviceId,
+        //             staffId: detail.staffId,
+        //             packageId: detail.packageId,
+        //             price: detail.price,
+        //             duration: detail.duration,
+        //         })
+        //     }
+        // }
 
-        if (bodyServices.length > 0) {
-            let duration = 0;
-            for (const service of bodyServices) {
-                duration += service.duration;
-                listBookingDetailsDto.push(<BookingDetailEntity>{
-                    serviceId: service.id,
-                    duration: service.duration,
-                    packageId: null,
-                    price: service.price,
-                });
-            }
-        }
+        // if (bodyServices.length > 0) {
+        //     let duration = 0;
+        //     for (const service of bodyServices) {
+        //         duration += service.duration;
+        //         listBookingDetailsDto.push(<BookingDetailEntity>{
+        //             serviceId: service.id,
+        //             duration: service.duration,
+        //             packageId: null,
+        //             price: service.price,
+        //         });
+        //     }
+        // }
 
-        if (bodyPackages.length > 0) {
-            let duration = 0;
-            const ids = bodyPackages.map(pac=>pac.id);
-            const packages = await this.findPackageByIds(ids);
-            for (const aPackage of packages) {
-                duration += aPackage.duration;
-                listBookingDetailsDto.push({
-                    packageId: aPackage.packageId,
-                    serviceId: aPackage.serviceId,
-                    duration: aPackage.duration,
-                    price: aPackage.price,
-                });
-            }
-        }
+        // if (bodyPackages.length > 0) {
+        //     let duration = 0;
+        //     const ids = bodyPackages.map(pac => pac.id);
+        //     const packages = await this.findPackageByIds(ids);
+        //     for (const aPackage of packages) {
+        //         duration += aPackage.duration;
+        //         listBookingDetailsDto.push({
+        //             packageId: aPackage.packageId,
+        //             serviceId: aPackage.serviceId,
+        //             duration: aPackage.duration,
+        //             price: aPackage.price,
+        //         });
+        //     }
+        // }
 
-        if (idsDeleteBookingDetail.length > 0) {
-            BookingDetailEntity.createQueryBuilder()
-                .delete()
-                .where("id in (:ids)", { ids: idsDeleteBookingDetail })
-                .execute();
-        }
+        // if (idsDeleteBookingDetail.length > 0) {
+        //     BookingDetailEntity.createQueryBuilder()
+        //         .delete()
+        //         .where("id in (:ids)", { ids: idsDeleteBookingDetail })
+        //         .execute();
+        // }
 
-        let startTime = bodyUpdateBooking.startTime;
-        let bookingDetails: BookingDetailEntity[] = [];
+        // let startTime = bodyUpdateBooking.startTime;
+        // let bookingDetails: BookingDetailEntity[] = [];
 
-        for (const bookingDetail of listBookingDetailsDto) {
-            let endTime = this.addMinutes(startTime, bookingDetail.duration);
-            bookingDetails.push(<BookingDetailEntity><unknown>{
-                startTime: startTime,
-                endTime: endTime,
-                booking,
-                serviceId: bookingDetail.serviceId,
-                staffId: bodyUpdateBooking.staffId,
-                packageId: bookingDetail.packageId,
-                price: bookingDetail.price,
-                duration: bookingDetail.price,
-            });
-            startTime = endTime;
-        }
+        // for (const bookingDetail of listBookingDetailsDto) {
+        //     let endTime = this.addMinutes(startTime, bookingDetail.duration);
+        //     bookingDetails.push(<BookingDetailEntity><unknown>{
+        //         startTime: startTime,
+        //         endTime: endTime,
+        //         booking,
+        //         serviceId: bookingDetail.serviceId,
+        //         staffId: bodyUpdateBooking.staffId,
+        //         packageId: bookingDetail.packageId,
+        //         price: bookingDetail.price,
+        //         duration: bookingDetail.price,
+        //     });
+        //     startTime = endTime;
+        // }
 
-        BookingDetailEntity.save(bookingDetailsExist);
-        BookingDetailEntity.save(bookingDetails);
+        // BookingDetailEntity.save(bookingDetailsExist);
+        // BookingDetailEntity.save(bookingDetails);
 
-        let bookingUpdate = {
-            ...booking,
-            date: bodyUpdateBooking.date,
-            color: bodyUpdateBooking.color,
-            note: bodyUpdateBooking.note,
-        }
+        // let bookingUpdate = {
+        //     ...booking,
+        //     date: bodyUpdateBooking.date,
+        //     color: bodyUpdateBooking.color,
+        //     note: bodyUpdateBooking.note,
+        // }
 
-        return BookingEntity.save(<BookingEntity>bookingUpdate);
+        // return BookingEntity.save(<BookingEntity>bookingUpdate);
     }
 
     async cancelAppointment(id: number, booking: CancelBookingDto, userId: number) {
@@ -379,6 +431,14 @@ export class BookingService {
         return arr;
     }
 
+    overlapping(a: ITimeOverlap, b: ITimeOverlap) {
+        const getMinutes = s => {
+            const p = s.split(':').map(Number);
+            return p[0] * 60 + p[1];
+        };
+        return getMinutes(a.end) > getMinutes(b.start) && getMinutes(b.end) > getMinutes(a.start);
+    };
+
     convertStringToTime(time: string, pickDate: Date, storeTimezone: string, customerTimezone: string = "") {
         const [hh, mm] = time.split(":");
         //change timezone to store timezone
@@ -407,133 +467,23 @@ export class BookingService {
     getUser(userId: number) {
         return UserEntity.findOne({ where: { id: userId } });
     }
-    /*
-        async getHistoryStatus(_query: QueryHistoryByDateDto, storeId: number) {
-            const { start, end, staffId } = _query;
-            let query = BookingEntity
-                .createQueryBuilder('booking')
-                .leftJoin('booking.service', 'service', 'service.isService = true')
-                .select("date_format(booking.date,'%Y-%m-%d')", "created")
-                .addSelect("COUNT(booking.id)", "count")
-                .addSelect('SUM(service.serviceDuration)', 'totalMinute')
-                .orderBy({ created: 'ASC' })
-                .groupBy("DATE(booking.date)")
-                .where('booking.storeId = :storeId', { storeId })
-                .andWhere('booking.date >= :start', { start })
-                .andWhere('booking.date < :end', { end })
-                .andWhere('booking.isActive=true')
-    
-            if (staffId) {
-                query = query.andWhere('staffId = :staffId', { staffId })
-            }
-            return query.getRawMany();;
-        }
-    */
-    /*
-       addMinutes(date: Date, minutes: number) {
-           // let startTime = bodyBooking.startTime;
-   
-           // for (const bookingDetail of listBookingDetailsDto) {
-           //     let endTime = this.addMinutes(new Date(startTime), bookingDetail.duration);
-           //     bookingDetails.push(<BookingDetailEntity>{
-           //         startTime: startTime,
-           //         endTime: endTime,
-           //         booking,
-           //         serviceId: bookingDetail.serviceId,
-           //         staffId: bodyBooking.staffId,
-           //         packageId: bookingDetail.packageId ? bookingDetail.packageId : null,
-           //         price: bookingDetail.price,
-           //         duration: bookingDetail.duration
-           //     })
-           //     startTime = endTime;
-           // }
-           date.setMinutes(date.getMinutes() + minutes);
-           return date;
-       }
-     */
 
-    /*
-        async getHistoryByDate(_query: QueryHistoryByDateDto, storeId: number, companyId: number) {
-            const { start, end, staffId } = _query;
-    
-            let query = StaffEntity.createQueryBuilder('staff')
-                .leftJoin("staff.bookingInfo", "bookingInfo")
-                .leftJoin("bookingInfo.booking", "booking")
-                .leftJoin('booking.customer', 'customer')
-                .leftJoin('customer.companyCustomer', 'companyCustomer', 'companyCustomer.companyId = :companyId', { companyId })
-                .leftJoin('booking.service', 'service', 'service.isService = true AND service.isActive = true')
-                .select([
-                    "staff.id as staffId", "staff.storeId as storeId",
-                    "staff.name as staffName", "booking.id as bookingId",
-                    "booking.storeId as bookingStoreId",
-                    "booking.duration as duration", "booking.date as date",
-                    "booking.color as color", "booking.serviceId as serviceId",
-                    "service.name as serviceName", "service.price as servicePrice",
-                    "service.cost as serviceCost", "service.serviceDuration as serviceDuration",
-                ])
-                .where(`staff.storeId = :storeId AND (${staffId && +staffId === -1 ? "booking.id is null or" : ''} (booking.isActive = true AND booking.date between :start and :end AND booking.storeId = :storeId))`, { storeId, start, end })
-                .groupBy("staffId, storeId, bookingId")
-    
-            if (staffId && +staffId !== -1 && +staffId !== 0) {
-                query = query.andWhere(`staff.id = :staffId`, { staffId: +staffId })
-            }
-    
-            return query.getRawMany();
-        }
-        */
+    getStaffsByService(serviceId: number, staffId: number, storeId: number) {
+        let query;
 
-    /*
-      async getCalendarSlot(date: Date, staffId: number, storeId: number) {
-          const staff = await StaffEntity.findOne({ where: { id: staffId } });
-  
-          const setting = await SettingEntity.findOne({ where: { storeId: staff.storeId } });
-          let stringToDate = new Date(`${date}` as string);
-  
-          stringToDate = this.changeTimezone(stringToDate, setting.timeZone);
-          const startDate = new Date(stringToDate);
-          startDate.setHours(0, 0, 0, 0);
-          const endDate = new Date(startDate);
-          endDate.setDate(endDate.getDate() + 1);
-          let slots: { time: Date, open: boolean }[] = this.getAllSlots(startDate, endDate, setting.store.bookingSlotSize);
-  
-          const booking = await BookingEntity.createQueryBuilder('booking')
-              .leftJoinAndSelect('booking.service', 'service')
-              .where('booking.storeId = :storeId', { storeId: staff.storeId })
-              .andWhere('booking.isActive = true')
-              .andWhere('booking.staffId = :staffId', { staffId: staff.id })
-              .andWhere('booking.date between :startDate and :endDate', { startDate, endDate })
-              .getMany();
-  
-          const getWorkingDay = staff.workingHours.find(w => w.day === stringToDate.getDay());
-          let workingStart = this.convertStringToTime(getWorkingDay.fromHour, stringToDate, setting.timeZone);
-          let workingEnd = this.convertStringToTime(getWorkingDay.toHour, stringToDate, setting.timeZone);
-          for (let i = 0; i < slots.length; i++) {
-              if (!getWorkingDay.open) slots[i].open = false;
-              // else if (slots[i].time < workingStart || slots[i].time > workingEnd) slots[i].open = false;
-              // else if (booking.length > 0 && booking.some(b => {
-              //     const end = new Date(b.date)
-              //     end.setMinutes(end.getMinutes() + b.service.serviceDuration)
-              //     return slots[i].time >= b.date && slots[i].time < end;
-              // })) {
-              //     slots[i].open = false;
-              // } 
-              else if (staff.breakTimes.some(b => {
-                  const fromhhmm = b.fromHour.split(':');
-                  const endhhmm = b.toHour.split(':');
-                  let start = new Date(slots[i].time);
-                  start.setHours(+fromhhmm[0], +fromhhmm[1]);
-                  let end = new Date(slots[i].time);
-                  end.setHours(+endhhmm[0], +endhhmm[1]);
-                  return (b.day === slots[i].time.getDay() && slots[i].time >= start && slots[i].time < end)
-              })) {
-                  slots[i].open = false;
-              } 
-              else if (this.checkIfDayOff(staff.timeOffs, slots[i].time)) {
-                  slots[i].open = false;
-              }
-          }
-  
-          return slots;
-      }
-      */
+        if (serviceId) {
+            query = StaffEntity.createQueryBuilder("staff")
+                .leftJoin("staff.services", "services")
+                .where("staff.storeId = :storeId", { storeId })
+                .andWhere("services.id = :serviceId", { serviceId })
+        }
+        if (staffId) {
+            query = ServiceEntity.createQueryBuilder('service')
+                .leftJoin("service.staffs", "staffs")
+                .where("staffs.storeId = :storeId", { storeId })
+                .andWhere("staffs.id = :staffId", { staffId })
+        }
+
+        return query.getMany();
+    }
 }

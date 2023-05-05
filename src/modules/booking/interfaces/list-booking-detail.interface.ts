@@ -3,4 +3,6 @@ export interface IListBookingDetail {
     packageId: number;
     duration: number,
     price: number;
+    startTime: string;
+    endTime: string;
 }

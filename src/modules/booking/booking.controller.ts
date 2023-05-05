@@ -31,6 +31,16 @@ export class BookingController {
         return this.bookingService.createBookAppointment(booking, storeId);
     }
 
+    @Get("/:serviceId/staffs")
+    getStaffsByService(@Param("serviceId") serviceId: number, @User('storeId') storeId: number) {
+        return this.bookingService.getStaffsByService(serviceId, null, storeId);
+    }
+
+    @Get("/:staffId/services")
+    getServicesByStaff(@Param("staffId") staffId: number, @User('storeId') storeId: number) {
+        return this.bookingService.getStaffsByService(null, staffId, storeId);
+    }
+
     @Put('/:bookingId')
     async updateAppointment(@Param('bookingId', ParseIntPipe) bookingId: string, @Body() booking: UpdateBookingDto, @User('storeId') storeId: number) {
         return this.bookingService.updateAppointment(+bookingId, booking, storeId);
