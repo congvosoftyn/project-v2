@@ -7,7 +7,7 @@ export class DetailBooking {
     bookingId: number;
     staffId: number;
     serviceId: number;
-    packageId?: number;
+    packageId: number = null;
     deleted: boolean = false;
     startTime: string;
     endTime: string;
@@ -20,7 +20,7 @@ export class UpdateBookingDto extends PartialType(AppointmentDto) {
     serviceIds?: number[];
     bookingDetails: DetailBooking[];
     staffId: number;
-    startTime: string;
+    startTime?: string;
 }
 
 export class CancelBookingDto {
