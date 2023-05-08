@@ -94,37 +94,37 @@ export class BookingService {
             }
         }
 
-        let bookingDetailsExist = await BookingDetailEntity.createQueryBuilder("bd")
-            .leftJoin("bd.booking", "booking")
-            .select(["bd.id", "bd.startTime", "bd.endTime"])
-            .where("booking.storeId = :storeId", { storeId })
-            .andWhere("booking.date = :date", { date: format(new Date(bodyBooking.date), "yyyy-MM-dd") })
-            .andWhere("bd.staffId = :staffId", { staffId: bodyBooking.staffId })
-            .andWhere("bd.startTime >= :startTime", { startTime: bodyBooking.startTime })
-            .getMany();
+        // let bookingDetailsExist = await BookingDetailEntity.createQueryBuilder("bd")
+        //     .leftJoin("bd.booking", "booking")
+        //     .select(["bd.id", "bd.startTime", "bd.endTime"])
+        //     .where("booking.storeId = :storeId", { storeId })
+        //     .andWhere("booking.date = :date", { date: format(new Date(`${bodyBooking.date} ${startTime}`), "yyyy-MM-dd'T'HH:mm:ss.SSS") })
+        //     .andWhere("bd.staffId = :staffId", { staffId: bodyBooking.staffId })
+        //     .andWhere("bd.startTime >= :startTime", { startTime: bodyBooking.startTime })
+        //     .getMany();
 
-        let convertBookingDetailsExist = bookingDetailsExist.map((bookingDetail) => ({ ...bookingDetail, endTime: this.addMinutes(bookingDetail.endTime, staff.breakTime) }))
+        // let convertBookingDetailsExist = bookingDetailsExist.map((bookingDetail) => ({ ...bookingDetail, endTime: this.addMinutes(bookingDetail.endTime, staff.breakTime) }))
 
-        let checkBookingSlotOverlaps = [];
+        // let checkBookingSlotOverlaps = [];
 
-        for (const bookingDetailsDto of listBookingDetailsDto) {
-            for (const bookingDetail of convertBookingDetailsExist) {
-                if (this.overlapping(
-                    { start: bookingDetailsDto.startTime, end: bookingDetailsDto.endTime },
-                    { start: bookingDetail.startTime, end: bookingDetail.endTime }
-                )) {
-                    checkBookingSlotOverlaps.push(bookingDetailsDto)
-                }
-            }
-        }
+        // for (const bookingDetailsDto of listBookingDetailsDto) {
+        //     for (const bookingDetail of convertBookingDetailsExist) {
+        //         if (this.overlapping(
+        //             { start: bookingDetailsDto.startTime, end: bookingDetailsDto.endTime },
+        //             { start: bookingDetail.startTime, end: bookingDetail.endTime }
+        //         )) {
+        //             checkBookingSlotOverlaps.push(bookingDetailsDto)
+        //         }
+        //     }
+        // }
 
-        if (checkBookingSlotOverlaps.length > 0) {
-            return;
-        }
+        // if (checkBookingSlotOverlaps.length > 0) {
+        //     return;
+        // }
 
         const booking = await BookingEntity.save(<BookingEntity><unknown>{
             customer, storeId, duration,
-            date: format(new Date(bodyBooking.date), "yyyy-MM-dd"),
+            date: new Date(`${this.convertYYYYMMDD(bodyBooking.date)} ${bodyBooking.startTime}:00`).toISOString(),
             status: bodyBooking.status,
             color: bodyBooking.color,
             note: bodyBooking.note,
@@ -363,9 +363,9 @@ export class BookingService {
 
         const bookingDetails = await BookingDetailEntity.createQueryBuilder("bd")
             .leftJoin("bd.booking", "booking")
-            .select(["bd.id", "bd.startTime", "bd.endTime", "booking.storeId", "booking.id", "booking.date", "booking.status",])
+            .select(["bd.id", "bd.startTime", "bd.endTime", "booking.storeId", "booking.id", "booking.date", "booking.status"])
             .where("bd.staffId = :staffId AND booking.storeId = :storeId", { staffId, storeId, })
-            .andWhere("booking.date between :workingStart and :workingEnd", { workingStart: workingStart.toISOString(), workingEnd: workingEnd.toISOString(), })
+            .andWhere("booking.date between :workingStart and :workingEnd", { workingStart: workingStart.toISOString(), workingEnd: workingEnd.toISOString() })
             .getMany();
 
         for (let available of availables) {
@@ -424,6 +424,11 @@ export class BookingService {
     convertDate(day: string) {
         const [dd, MM, YYYY] = day.split("/");
         return `${MM}-${dd}-${YYYY}`;
+    }
+
+    convertYYYYMMDD(date: string){
+        const [dd, MM, YYYY] = date.split("/");
+        return `${YYYY}-${MM}-${dd}`;
     }
 
     formatTime(date: Date) {

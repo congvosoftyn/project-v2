@@ -32,3 +32,9 @@ console.log("check", timeOverlaps)
 
 
 // console.log(isOverlapping(arr));
+/**
+ * *******************************CONVERT DATETIME TO TIME UTC IN JS/NODEJS*******************************
+ */
+
+const stringTime = "2023-05-09 11:15:00"
+console.log("convert Date to UTC", new Date(`${stringTime}`).toISOString())

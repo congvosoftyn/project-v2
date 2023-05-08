@@ -16,17 +16,17 @@ export class BookingEntity extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne((type) => CustomerEntity, { cascade: ['insert', 'update',"remove"]})
+  @ManyToOne((type) => CustomerEntity, { cascade: ['insert', 'update', "remove"] })
   @JoinColumn({ name: 'customerId' })
   customer: CustomerEntity;
 
   @Column({ type: 'int' })
   customerId: number;
 
-  @Column("date")
+  @Column("datetime")
   date: Date;
 
-  @OneToMany(() => BookingDetailEntity, info => info.booking,{onDelete:"CASCADE",onUpdate:"CASCADE"})
+  @OneToMany(() => BookingDetailEntity, info => info.booking, { onDelete: "CASCADE", onUpdate: "CASCADE" })
   bookingDetails: BookingDetailEntity[];
 
   @Column({ default: AppointmentBookingStatus.booked }) // danger, warning, ok
