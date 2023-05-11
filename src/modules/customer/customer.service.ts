@@ -168,7 +168,7 @@ export class CustomerService {
  * Import WHERE IN in TypeORM PostgresSQL
  * Example PostgresSQL 
  * => SELECT * FROM "customer" "cus" WHERE concat("cus"."countryCode", '', "cus"."phoneNumber") IN ('+1123456','+1123789','+1456789','+1078985654')
- *=> WAY ONE:
+ * => * WAY ONE:
  constructor(@InjectConnection() private readonly connection: Connection) { }
   let formatString: string = '';
     for (const [i, value] of phoneNumbers.entries()) {
@@ -179,8 +179,9 @@ export class CustomerService {
       }
     }
   * => return this.connection.query(`SELECT cus.* FROM customer cus WHERE concat(cus."countryCode", '', cus."phoneNumber") IN (${formatString})`);
- *=> WAY TWO
+ * => * WAY TWO
   * => return CustomerEntity.createQueryBuilder("cus").where(`concat(cus.countryCode, '', cus.phoneNumber) IN (${formatString})`).getMany();
+ * => * Way three: .where("CONCAT(cus.countryCode, cus.phoneNumber) IN (:...phoneNumbers)",{phoneNumbers})
   * CURL: 
   * curl --location 'http://localhost:3000/customers/import' \
     --header 'Content-Type: application/json' \
@@ -207,5 +208,5 @@ export class CustomerService {
                 "phoneNumber": "078985654"
             }
         ]
-    }' 
+    }'
  */
