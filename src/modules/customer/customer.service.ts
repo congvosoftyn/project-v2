@@ -164,3 +164,48 @@ export class CustomerService {
   //   return favor.favorStores;
   // }
 }
+/**
+ * Import WHERE IN in TypeORM PostgresSQL
+ * Example PostgresSQL 
+ * => SELECT * FROM "customer" "cus" WHERE concat("cus"."countryCode", '', "cus"."phoneNumber") IN ('+1123456','+1123789','+1456789','+1078985654')
+ *=> WAY ONE:
+ constructor(@InjectConnection() private readonly connection: Connection) { }
+  let formatString: string = '';
+    for (const [i, value] of phoneNumbers.entries()) {
+      if(i === phoneNumbers.length -1){
+        formatString = formatString +`'${value}'`
+      }else {
+        formatString = formatString +`'${value}',`
+      }
+    }
+  * => return this.connection.query(`SELECT cus.* FROM customer cus WHERE concat(cus."countryCode", '', cus."phoneNumber") IN (${formatString})`);
+ *=> WAY TWO
+  * => return CustomerEntity.createQueryBuilder("cus").where(`concat(cus.countryCode, '', cus.phoneNumber) IN (${formatString})`).getMany();
+  * CURL: 
+  * curl --location 'http://localhost:3000/customers/import' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "customers":[
+            {
+                "name":"customer 1 Spring Boot",
+                "countryCode": "+1",
+                "phoneNumber": "123456"
+            },
+            {
+                "name":"customer 2 Rust",
+                "countryCode": "+1",
+                "phoneNumber": "123789"
+            },
+            {
+                "name":"customer 3 Golang",
+                "countryCode": "+1",
+                "phoneNumber": "456789"
+            },
+            {
+                "name":"customer 4 PHP",
+                "countryCode": "+1",
+                "phoneNumber": "078985654"
+            }
+        ]
+    }' 
+ */
