@@ -53,8 +53,8 @@ export class StoreEntity extends BaseEntity {
     @Column({ nullable: true })
     cancelTime: number;
 
-    @ManyToOne(()=>UserEntity, {onDelete:"CASCADE",onUpdate:"CASCADE"})
-    @JoinColumn({name:"userId"})
+    @ManyToOne(() => UserEntity, { onDelete: "CASCADE", onUpdate: "CASCADE" })
+    @JoinColumn({ name: "userId" })
     user: UserEntity;
 
     @Column()

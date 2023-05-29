@@ -22,22 +22,7 @@ export class ServiceEntity extends BaseEntity {
       }
     }, precision: 11, scale: 2, default: 0
   })
-  cost: number;
-
-  @Column('decimal', {
-    transformer: {
-      to(value) {
-        return parseFloat(value)
-      },
-      from(value) {
-        return parseFloat(value)
-      }
-    }, precision: 11, scale: 2, default: 0
-  })
   price: number;
-
-  @Column({ default: 0 })
-  stocks: number;
 
   @Column({ nullable: true })
   description: string;
@@ -70,6 +55,6 @@ export class ServiceEntity extends BaseEntity {
   @ManyToMany(() => StaffEntity, (staff) => staff.services, { onDelete: "CASCADE", onUpdate: "CASCADE" })
   staffs: StaffEntity[];
 
-  @ManyToMany((type) => PackageEntity)
+  @ManyToMany((type) => PackageEntity, pac => pac.services, { eager: true })
   packages: PackageEntity[];
 }

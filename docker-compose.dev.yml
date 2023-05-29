@@ -1,0 +1,15 @@
+version: '3'
+volumes:
+  data:
+services:
+  db:
+    image: mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: admin123
+      MYSQL_DATABASE: charmsta
+      MYSQL_USER: root
+      MYSQL_PASSWORD: admin123
+    volumes:
+      - data:/var/lib/mysql
+    ports:
+      - "3306:3306"

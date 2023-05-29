@@ -4,13 +4,19 @@ import { CategoryEntity } from 'src/entities/Category.entity';
 import { StaffEntity } from 'src/entities/Staff.entity';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { PaginationDto } from 'src/shared/dto/pagination.dto';
-import { In } from 'typeorm';
+import { Connection, In } from 'typeorm';
 import { TaxEntity } from 'src/entities/Tax.entity';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { QuerySearchPaginationDto } from 'src/shared/dto/query-search-pagination.dto';
+import { InjectConnection } from '@nestjs/typeorm';
+import { ISearchService } from './interfaces/search-service.interface';
+import { SearchServiceDTO } from './dto/search-service.dto';
+import { PackageEntity } from 'src/entities/Package.entity';
 
 @Injectable()
 export class ServiceService {
+    constructor(@InjectConnection() private readonly connection: Connection) { }
+
     async getServices(storeId: number, queryService: QuerySearchPaginationDto) {
         const { size, page, keyword } = queryService;
         let query = ServiceEntity.createQueryBuilder('service')
@@ -43,9 +49,7 @@ export class ServiceService {
 
         return ServiceEntity.save(<ServiceEntity>{
             name: bodyService.name,
-            cost: bodyService.cost,
             price: bodyService.price,
-            stocks: bodyService.stocks,
             description: bodyService.description,
             photo: bodyService.photo,
             duration: bodyService.duration,
@@ -75,9 +79,7 @@ export class ServiceService {
         return ServiceEntity.save(<ServiceEntity>{
             ...service,
             name: bodyUpdateService.name,
-            cost: bodyUpdateService.cost,
             price: bodyUpdateService.price,
-            stocks: bodyUpdateService.stocks,
             description: bodyUpdateService.description,
             photo: bodyUpdateService.photo,
             duration: bodyUpdateService.duration,
@@ -88,6 +90,62 @@ export class ServiceService {
 
     deleteService(id: number) {
         return ServiceEntity.delete({ id });
+    }
+
+    async getSearchServiceWhenCreateBooking(query: SearchServiceDTO, storeId: number) {
+        const keyword = query.keyword;
+        let pageSize = query.page * query.size;
+        let size = query.size;
+
+        const listResultSearch: ISearchService[] = await this.connection.query(`
+            select temp.id, temp.isService, temp.name
+            from (
+                SELECT ser.id, ser.name, cate.storeId, true as isService
+                FROM charmsta.service ser
+                LEFT JOIN charmsta.category cate ON cate.id = ser.categoryId
+                UNION
+                SELECT pac.id, pac.name, cate.storeId, false as isService
+                FROM charmsta.package pac
+                LEFT JOIN charmsta.category cate ON cate.id = pac.categoryId
+            ) as temp
+            where temp.storeId = ${storeId}
+            and lower(temp.name) like lower('%${keyword}%')
+            order by temp.id asc
+            limit ${pageSize}, ${size}
+        `);
+
+        const serviceIds: number[] = [];
+        const packageIds: number[] = [];
+
+        for (const resultSearch of listResultSearch) {
+            if (resultSearch.isService) {
+                serviceIds.push(resultSearch.id)
+            } else {
+                packageIds.push(resultSearch.id)
+            }
+        }
+
+        console.log({ serviceIds, packageIds })
+
+        let services: ServiceEntity[]
+        let packages: PackageEntity[];
+
+        if (serviceIds.length > 0) {
+            services = await ServiceEntity.createQueryBuilder("ser")
+                .leftJoinAndSelect("ser.packages", "packages")
+                .where("ser.id IN (:ids)", { ids: serviceIds })
+                .getMany();
+        }
+
+        if (packageIds.length > 0) {
+            packages = await PackageEntity.createQueryBuilder("pac")
+                .leftJoinAndSelect("pac.services", "services")
+                .where("pac.id IN (:ids)", { ids: packageIds })
+                .getMany();
+        }
+
+        let result = services;
+        return {...result,...packages};
     }
 
 }

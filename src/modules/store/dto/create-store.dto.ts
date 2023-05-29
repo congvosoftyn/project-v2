@@ -7,7 +7,7 @@ export class CreateStoreDto {
     categories: string;
     phoneNumber: string;
     image: string;
-    timezone: string;
+    timezone: string = "America/Chicago";
     bookingSlotSize: number = 15;
     notes: string;
     cancelTime: number = 0;
